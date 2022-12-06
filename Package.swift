@@ -15,7 +15,6 @@ let package = Package(
             targets: ["Dufap"]),
     ],
     dependencies: [
-		.package(url: "https://github.com/AndreKuts/RequestableNetworker.git", branch: "main")
     ],
     targets: [
         .target(
