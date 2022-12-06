@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "requestablenetworker",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/AndreKuts/RequestableNetworker.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "b64fe7076880477c33191ca3657581c86ec88a20"
+      }
+    }
+  ],
+  "version" : 2
+}
