@@ -1,7 +1,7 @@
 import Combine
 
 @dynamicMemberLookup
-public final class AnyViewModel<State, Action>: ViewModel {
+open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ViewModelProtocol {
 
 	private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
 	private let wrappedState: () -> State
@@ -10,7 +10,7 @@ public final class AnyViewModel<State, Action>: ViewModel {
 	public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
 	public var state: State { wrappedState() }
 
-	public init<V: ViewModel>(_ viewModel: V) where V.State == State, V.Action == Action {
+	public init<V: ViewModelProtocol>(_ viewModel: V) where V.State == State, V.Action == Action {
 		self.wrappedObjectWillChange = { viewModel.objectWillChange.eraseToAnyPublisher() }
 		self.wrappedState = { viewModel.state }
 		self.wrappedTrigger = viewModel.trigger
