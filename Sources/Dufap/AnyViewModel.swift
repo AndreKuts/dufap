@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 
 @dynamicMemberLookup
 open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ViewModelProtocol {
@@ -11,7 +12,12 @@ open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ViewModel
 	public var state: State { wrappedState() }
 
 	public init<V: ViewModelProtocol>(_ viewModel: V) where V.State == State, V.Action == Action {
-		self.wrappedObjectWillChange = { viewModel.objectWillChange.eraseToAnyPublisher() }
+		self.wrappedObjectWillChange = {
+			viewModel
+				.objectWillChange
+				.receive(on: RunLoop.main)
+				.eraseToAnyPublisher()
+		}
 		self.wrappedState = { viewModel.state }
 		self.wrappedTrigger = viewModel.trigger
 	}
