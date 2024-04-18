@@ -2,14 +2,13 @@ import Combine
 import Foundation
 
 @dynamicMemberLookup
-open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ViewModelProtocol {
+open class AnyViewModel<State: StateProtocol, Action: ActionProtocol> {
 
 	private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
 	private let wrappedState: () -> State
 	private let wrappedTrigger: (Action) -> Void
-
-	public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
-	public var state: State { wrappedState() }
+	private var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
+	private var state: State { wrappedState() }
 
 	public init<V: ViewModelProtocol>(_ viewModel: V) where V.State == State, V.Action == Action {
 		self.wrappedObjectWillChange = {
