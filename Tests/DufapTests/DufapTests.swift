@@ -1,9 +1,19 @@
+import SwiftSyntax
+import SwiftSyntaxBuilder
+import SwiftSyntaxMacros
+import SwiftSyntaxMacrosTestSupport
 import XCTest
-@testable import Dufap
+
+#if canImport(DufapMacros)
+import DufapMacros
+
+let testMacros: [String: Macro.Type] = [
+    "viewStateAction": ViewStateActionMacro.self,
+]
 
 final class DufapTests: XCTestCase {
-
-    func testExample() throws {
+    func testMacro() throws {
     }
-
 }
+
+#endif
