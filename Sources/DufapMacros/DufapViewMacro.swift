@@ -3,10 +3,75 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-public enum ViewStateActionMacro {
-	enum Error: Swift.Error {
-		case generalError(String)
-	}
+public enum ViewStateActionMacro { }
+public enum ViewModelMacro { }
+
+enum MacroError: Error {
+    case generalError(String)
+}
+
+extension ViewModelMacro: ExtensionMacro {
+
+    public static func expansion(
+        of node: SwiftSyntax.AttributeSyntax,
+        attachedTo declaration: some SwiftSyntax.DeclGroupSyntax, 
+        providingExtensionsOf type: some SwiftSyntax.TypeSyntaxProtocol,
+        conformingTo protocols: [SwiftSyntax.TypeSyntax],
+        in context: some SwiftSyntaxMacros.MacroExpansionContext
+    ) throws -> [SwiftSyntax.ExtensionDeclSyntax] {
+
+        let stateProtect: DeclSyntax =
+            """
+            extension \(type.trimmed): UpdateStateProtection { }
+            """
+
+        let viewModel: DeclSyntax =
+            """
+            extension \(type.trimmed): ViewModelProtocol { }
+            """
+
+        return [
+            stateProtect.cast(ExtensionDeclSyntax.self),
+            viewModel.cast(ExtensionDeclSyntax.self),
+        ]
+    }
+}
+
+extension ViewModelMacro: MemberMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingMembersOf declaration: some DeclGroupSyntax,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+        return [
+            """
+                var setStateLock = NSLock()
+            """
+        ]
+    }
+}
+
+extension ViewModelMacro: MemberAttributeMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingAttributesFor member: some DeclSyntaxProtocol,
+        in context: some MacroExpansionContext
+    ) throws -> [AttributeSyntax] {
+
+        let memberId = member
+            .as(VariableDeclSyntax.self)?
+            .bindings
+            .compactMap {
+                $0.pattern
+                    .as(IdentifierPatternSyntax.self)?
+                    .identifier
+                    .text
+            }.first ?? ""
+
+        return memberId == "state" ? ["@Published"] : []
+    }
 }
 
 extension ViewStateActionMacro: ExtensionMacro {
@@ -57,7 +122,7 @@ extension ViewStateActionMacro: MemberMacro {
 				.as(DeclReferenceExprSyntax.self)?.baseName.text
 
         else {
-			throw Error.generalError("Parsing State and/or Action type arguments")
+			throw MacroError.generalError("Parsing State and/or Action type arguments")
         }
 
         return [
@@ -71,20 +136,10 @@ extension ViewStateActionMacro: MemberMacro {
     }
 }
 
-extension ViewStateActionMacro: MemberAttributeMacro {
-    public static func expansion(
-        of node: SwiftSyntax.AttributeSyntax,
-        attachedTo declaration: some SwiftSyntax.DeclGroupSyntax,
-        providingAttributesFor member: some SwiftSyntax.DeclSyntaxProtocol,
-        in context: some SwiftSyntaxMacros.MacroExpansionContext
-    ) throws -> [SwiftSyntax.AttributeSyntax] {
-        []
-    }
-}
-
 @main
 struct DufapPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        ViewStateActionMacro.self
+        ViewStateActionMacro.self,
+        ViewModelMacro.self,
     ]
 }

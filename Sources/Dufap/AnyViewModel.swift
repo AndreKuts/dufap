@@ -1,8 +1,11 @@
 import Combine
 import Foundation
 
+public protocol ActionProtocol: Hashable { }
+public protocol StateProtocol { }
+
 @dynamicMemberLookup
-open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ViewModelProtocol {
+open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ObservableObject {
 
 	private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
 	private let wrappedState: () -> State

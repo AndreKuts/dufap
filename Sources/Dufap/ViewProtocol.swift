@@ -7,12 +7,12 @@ public protocol ViewProtocol where Self: View {
 
     var viewModel: AnyViewModel<State, Action> { get }
 
-    init(_ viewModel: AnyViewModel<State, Action>)
+    init(viewModel: AnyViewModel<State, Action>)
 }
 
 public extension ViewProtocol {
 
     init<V: ViewModelProtocol>(viewModel: V) where V.Action == Action, V.State == State {
-        self.init(AnyViewModel(viewModel))
+        self.init(viewModel: AnyViewModel(viewModel))
     }
 }
