@@ -13,8 +13,12 @@ public protocol UpdateStateProtection: AnyObject {
 public extension UpdateStateProtection {
 
     func updateState(completion: @escaping (inout State) -> Void) {
-        setStateLock.lock()
-        completion(&state)
-        setStateLock.unlock()
+        if Thread.isMainThread {
+            completion(&state)
+        } else {
+            setStateLock.lock()
+            completion(&state)
+            setStateLock.unlock()
+        }
     }
 }

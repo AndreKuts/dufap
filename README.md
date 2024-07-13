@@ -120,8 +120,8 @@ class ContentViewModel {
             // 9. Update state
             updateState { $0.number += 1 }
 
-//            This update method is not protected if the actions co-occur from different threads/
-//            state.number += 1
+            // This update method is not protected if the actions co-occur from different threads
+            // state.number += 1
 
         case .updateTextField(let newText):
             updateState {
