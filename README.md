@@ -69,10 +69,10 @@ struct State: StateProtocol {
 // 3. Define Actions
 enum Action: ActionProtocol {
     case incrementNumber
-    case unsafeIncrementNumber
+    case updateTextField(String)
 }
 
-// 4. Define View using macfo
+// 4. Define View using macro
 @ViewWith(state: State, action: Action)
 struct ContentView: View {
 
