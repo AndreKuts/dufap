@@ -5,7 +5,7 @@ public protocol UpdateStateProtection: AnyObject {
     associatedtype State: StateProtocol
 
     var state: State { get set }
-    var setStateLock: NSLock { get }
+    var updateStateQueue: DispatchQueue { get }
 
     func updateState(completion: @escaping (inout State) -> Void)
 }
@@ -13,12 +13,8 @@ public protocol UpdateStateProtection: AnyObject {
 public extension UpdateStateProtection {
 
     func updateState(completion: @escaping (inout State) -> Void) {
-        if Thread.isMainThread {
+        updateStateQueue.sync {
             completion(&state)
-        } else {
-            setStateLock.lock()
-            completion(&state)
-            setStateLock.unlock()
         }
     }
 }

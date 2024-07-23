@@ -5,7 +5,7 @@
 @attached(member, names: named(viewModel), named(init))
 public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewStateActionMacro")
 
-@attached(extension, conformances: ViewModelProtocol, UpdateStateProtection)
-@attached(member, names: named(setStateLock))
+@attached(extension, conformances: ViewModelProtocol)
+@attached(member, names: named(updateStateQueue))
 @attached(memberAttribute)
 public macro ViewModel() = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")

@@ -103,7 +103,7 @@ struct ContentView: View {
 @ViewModel
 class ContentViewModel {
 
-    // 6. make state
+    // 6. define a state
     var state: State
 
     init(state: State = State()) {
@@ -120,13 +120,11 @@ class ContentViewModel {
             // 9. Update state
             updateState { $0.number += 1 }
 
-            // This update method is not protected if the actions co-occur from different threads
+            // This state update method is not protected if the actions co-occur from different threads
             // state.number += 1
 
         case .updateTextField(let newText):
-            updateState {
-                $0.textInput = newText
-            }
+            updateState { $0.textInput = newText }
         }
     }
 }

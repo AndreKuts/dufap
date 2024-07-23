@@ -20,18 +20,12 @@ extension ViewModelMacro: ExtensionMacro {
         in context: some SwiftSyntaxMacros.MacroExpansionContext
     ) throws -> [SwiftSyntax.ExtensionDeclSyntax] {
 
-        let stateProtect: DeclSyntax =
-            """
-            extension \(type.trimmed): UpdateStateProtection { }
-            """
-
         let viewModel: DeclSyntax =
             """
             extension \(type.trimmed): ViewModelProtocol { }
             """
 
         return [
-            stateProtect.cast(ExtensionDeclSyntax.self),
             viewModel.cast(ExtensionDeclSyntax.self),
         ]
     }
@@ -46,7 +40,7 @@ extension ViewModelMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         return [
             """
-                var setStateLock = NSLock()
+            var updateStateQueue = DispatchQueue(label: "com.state.update.queue")
             """
         ]
     }
