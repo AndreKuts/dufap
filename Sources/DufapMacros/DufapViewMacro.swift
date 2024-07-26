@@ -7,7 +7,7 @@ public enum ViewStateActionMacro { }
 public enum ViewModelMacro { }
 
 enum MacroError: Error {
-    case generalError(String)
+    case dufapGeneralError(String)
 }
 
 extension ViewModelMacro: ExtensionMacro {
@@ -40,7 +40,7 @@ extension ViewModelMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         return [
             """
-            var updateStateQueue = DispatchQueue(label: "com.state.update.queue")
+            var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.\(raw: declaration.as(ClassDeclSyntax.self)?.name.text.lowercased() ?? "unknown_object")")
             """
         ]
     }
@@ -95,11 +95,9 @@ extension ViewStateActionMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         guard
             let structDecl: StructDeclSyntax = declaration.as(StructDeclSyntax.self),
-            let argumentsList = structDecl.attributes
-                .as(AttributeListSyntax.self)?.first?
+            let argumentsList = structDecl.attributes.first?
                 .as(AttributeSyntax.self)?.arguments?
-                .as(LabeledExprListSyntax.self)?
-                .compactMap({ $0.as(LabeledExprSyntax.self) }),
+                .as(LabeledExprListSyntax.self),
             let stateArgument = argumentsList.first(where: { $0.label?.text == "state" }),
             let actionArgument = argumentsList.first(where: { $0.label?.text == "action" }),
             let stateType = stateArgument.expression
@@ -116,7 +114,7 @@ extension ViewStateActionMacro: MemberMacro {
 				.as(DeclReferenceExprSyntax.self)?.baseName.text
 
         else {
-			throw MacroError.generalError("Parsing State and/or Action type arguments")
+            throw MacroError.dufapGeneralError("Parsing State and/or Action type arguments")
         }
 
         return [

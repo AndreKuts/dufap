@@ -1,6 +1,6 @@
 import Combine
 
-public protocol ViewModelProtocol: UpdateStateProtection, ObservableObject where ObjectWillChangePublisher.Output == Void {
+public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where ObjectWillChangePublisher.Output == Void {
 
     associatedtype Action: ActionProtocol
 
