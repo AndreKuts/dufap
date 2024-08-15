@@ -64,6 +64,7 @@ import SwiftUI
 // 2. Define State
 struct State: StateProtocol {
     var number = 0
+    var textInput = ""
 }
 
 // 3. Define Actions
