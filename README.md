@@ -77,6 +77,11 @@ enum Action: ActionProtocol {
 @ViewWith(state: State, action: Action)
 struct ContentView: View {
 
+    // 5 Add default init
+    init(_ viewModel: AnyViewModel<StateView, ActionView>) {
+        self.viewModel = viewModel
+    }
+
     var body: some View {
         VStack {
             Text("Hello, world!")
@@ -100,25 +105,25 @@ struct ContentView: View {
     }
 }
 
-// 5. Define ViewModel using macro
+// 6. Define ViewModel using macro
 @ViewModel
 class ContentViewModel {
 
-    // 6. define a state
+    // 7. define a state
     var state: State
 
     init(state: State = State()) {
         self.state = state
     }
 
-    // 7. Define action handler function
+    // 8. Define action handler function
     func trigger(action: Action) {
 
-        // 8. handle actions
+        // 9. handle actions
         switch action {
         case .incrementNumber:
 
-            // 9. Update state
+            // 10. Update state
             updateState { $0.number += 1 }
 
             // This state update method is not protected if the actions co-occur from different threads
@@ -130,7 +135,7 @@ class ContentViewModel {
     }
 }
 
-// 10. App usage
+// 11. App usage
 @main
 struct TMPApp: App {
     var body: some Scene {
