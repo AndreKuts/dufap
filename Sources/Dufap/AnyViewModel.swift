@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-public protocol ActionProtocol: Hashable { }
+public protocol ActionProtocol { }
 public protocol StateProtocol { }
 
 @dynamicMemberLookup

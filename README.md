@@ -62,23 +62,23 @@ import Dufap
 import SwiftUI
 
 // 2. Define State
-struct State: StateProtocol {
+struct ContentState: StateProtocol {
     var number = 0
     var textInput = ""
 }
 
 // 3. Define Actions
-enum Action: ActionProtocol {
+enum ContentAction: ActionProtocol {
     case incrementNumber
     case updateTextField(String)
 }
 
 // 4. Define View using macro
-@ViewWith(state: State, action: Action)
+@ViewWith(state: ContentState, action: ContentAction)
 struct ContentView: View {
 
     // 5 Add default init
-    init(_ viewModel: AnyViewModel<StateView, ActionView>) {
+    init(_ viewModel: AnyViewModel<ContentState, ContentAction>) {
         self.viewModel = viewModel
     }
 
@@ -110,14 +110,14 @@ struct ContentView: View {
 class ContentViewModel {
 
     // 7. define a state
-    var state: State
+    var state: ContentState
 
-    init(state: State = State()) {
+    init(state: ContentState = ContentState()) {
         self.state = state
     }
 
     // 8. Define action handler function
-    func trigger(action: Action) {
+    func trigger(action: ContentAction) {
 
         // 9. handle actions
         switch action {
