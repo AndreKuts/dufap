@@ -18,7 +18,7 @@ open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: Observabl
 		self.wrappedObjectWillChange = {
 			viewModel
 				.objectWillChange
-				.receive(on: RunLoop.main)
+                .receive(on: OperationQueue.main)
 				.eraseToAnyPublisher()
 		}
 		self.wrappedState = { viewModel.state }
