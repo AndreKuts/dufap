@@ -105,7 +105,14 @@ public enum InjectingType {
 }
 
 public struct InjectorState: StateProtocol {
-    public var singletons: [ObjectIdentifier: Any] = [:]
-    public var factories: [ObjectIdentifier: Any] = [:]
+
+    public var singletons: [ObjectIdentifier: Any]
+    public var factories: [ObjectIdentifier: Any]
+
+    public init(singletons: [ObjectIdentifier : Any] = [:], factories: [ObjectIdentifier : Any] = [:]) {
+        self.singletons = singletons
+        self.factories = factories
+    }
+
 }
 
