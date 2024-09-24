@@ -84,14 +84,14 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
-            Text("Hello, world!")
             Text("Incrementing view \(viewModel.number)")
-            TextField("TextField", text: .init(get: { viewModel.textInput }, set: { viewModel.trigger(action: .updateTextField($0)) } ))
+            TextField("TextField", text: Binding { viewModel.textInput } set: { viewModel.trigger(action: .updateTextField($0)) } )
         }
         .padding()
         .onAppear(perform: testMultiThread)
     }
 
+    // This is a test to evaluate how well the UI can be updated from different threads.
     private func testMultiThread() {
         for number in 1...3 {
             print("Run test number \(number)")
@@ -105,25 +105,65 @@ struct ContentView: View {
     }
 }
 
-// 6. Define ViewModel using macro
+// Example of Dependencies
+struct NetworkService {
+
+}
+
+// 6. Define App dependency injector
+class AppDependencyInjector: Injector {
+
+    let updateStateQueue = DispatchQueue(label: "com.app.dependencies.injector")
+    var state = InjectorState()
+
+    // 7. As an example you can start injections in init
+    init() {
+        self.start()
+    }
+
+    // 8. Add all dependencies anything you need
+    func start() {
+
+        // Add as type builder
+        inject(asType: .factory) {
+            ContentState()
+        }
+
+        // Add as singleton
+        inject(asType: .singleton) {
+            NetworkService()
+        }
+    }
+}
+
+// 9. Define ViewModel using macro
 @ViewModel
 class ContentViewModel {
 
-    // 7. define a state
+    // 10. define a state
     var state: ContentState
+    var networkerService: NetworkService
 
-    init(state: ContentState = ContentState()) {
+    // 11. Add dependencies and states using the classic init method.
+    init(state: ContentState = ContentState(), networkerService: NetworkService) {
         self.state = state
+        self.networkerService = networkerService
     }
 
-    // 8. Define action handler function
+    // 12. Or add dependencies and states through the Injector.
+    init(injector: any Injector) {
+        self.state = injector.extract(asType: .factory)
+        self.networkerService = injector.extract(asType: .singleton)
+    }
+
+    // 13. Define action handler function
     func trigger(action: ContentAction) {
 
-        // 9. handle actions
+        // 14. handle actions
         switch action {
         case .incrementNumber:
 
-            // 10. Update state
+            // 15. Update state
             updateState { $0.number += 1 }
 
             // This state update method is not protected if the actions co-occur from different threads
@@ -135,12 +175,15 @@ class ContentViewModel {
     }
 }
 
-// 11. App usage
+// 16. App usage
 @main
 struct TMPApp: App {
+
+    let injector: any Injector = AppDependencyInjector()
+
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: ContentViewModel())
+            ContentView(viewModel: ContentViewModel(injector: injector))
         }
     }
 }
