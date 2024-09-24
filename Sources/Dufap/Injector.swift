@@ -1,5 +1,10 @@
 import Foundation
 
+public class DefaultDependencyInjector: Injector {
+    public let updateStateQueue = DispatchQueue(label: "com.app.dependencies.injector")
+    public var state = InjectorState()
+}
+
 public protocol Injector: ProtectedStateHolder where State == InjectorState {
     func extract<T>(asType type: InjectingType) -> T
     func extractThrows<T>(asType type: InjectingType) throws -> T
@@ -113,6 +118,4 @@ public struct InjectorState: StateProtocol {
         self.singletons = singletons
         self.factories = factories
     }
-
 }
-
