@@ -9,14 +9,12 @@ public final class CancellableBag<CancelID: Hashable> {
 
     /// Cancels and removes the task associated with the specified `id`.
     /// - Parameter id: The identifier of the task to cancel.
-    @MainActor
     public func cancel(id: CancelID) {
         bag[id]?.cancel()
         bag.removeValue(forKey: id)
     }
 
     /// Cancels and removes all tasks in the bag.
-    @MainActor
     public func cancelAll() {
         bag.values.forEach { $0.cancel() }
         bag.removeAll()
@@ -26,7 +24,6 @@ public final class CancellableBag<CancelID: Hashable> {
     /// - Parameters:
     ///   - id: The identifier for the task.
     ///   - cancellable: The `AnyCancellable` task to add.
-    @MainActor
     public func add(id: CancelID, cancellable: AnyCancellable) {
         bag[id]?.cancel()
         bag[id] = cancellable
@@ -35,7 +32,6 @@ public final class CancellableBag<CancelID: Hashable> {
     /// Accesses the `AnyCancellable` associated with a given ID for reading and writing.
     /// - Parameter id: The identifier of the task to access.
     /// - Returns: The `AnyCancellable` associated with the ID, or `nil` if it doesn't exist.
-    @MainActor
     public subscript(id: CancelID) -> AnyCancellable? {
         get {
             bag[id]
@@ -52,17 +48,10 @@ public final class CancellableBag<CancelID: Hashable> {
 
 public extension Task {
 
-    /// Stores the task's cancellation token in a given set of `AnyCancellable`.
-    /// - Parameter set: The set where the cancellation token will be stored.
-    func store(in set: inout Set<AnyCancellable>) {
-        set.insert(AnyCancellable(cancel))
-    }
-
     /// Stores the task's cancellation token in a `CancellableBag` with a unique identifier.
     /// - Parameters:
     ///   - bag: The `CancellableBag` where the cancellation token will be stored.
     ///   - id: The identifier used to associate the task's cancellation token within the bag.
-    @MainActor
     func store<ID: Hashable>(in bag: CancellableBag<ID>, as id: ID) {
         bag.add(id: id, cancellable: AnyCancellable(cancel))
     }
