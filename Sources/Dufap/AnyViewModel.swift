@@ -19,39 +19,39 @@ public protocol StateProtocol { }
  It helps to abstract away specific implementations of `ViewModelProtocol` and provides a standard interface for interaction.
  
  - Generic Parameters:
-    - `State`: The state type of the ViewModel, conforming to `StateProtocol`.
-    - `Action`: The action type of the ViewModel, conforming to `ActionProtocol`.
+    - `S`: The state type of the ViewModel, conforming to `StateProtocol`.
+    - `A`: The action type of the ViewModel, conforming to `ActionProtocol`.
  
  - Inherits:
     - `ObservableObject`: To enable automatic view updates when the `state` changes.
  */
-open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: ObservableObject {
+open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
     /// A closure that returns a publisher to notify about changes to the ViewModel.
     private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
-    
+
     /// A closure that returns the current state of the ViewModel.
-    private let wrappedState: () -> State
-    
+    private let wrappedState: () -> S
+
     /// A closure that triggers an action on the ViewModel.
-    private let wrappedTrigger: (Action) -> Void
+    private let wrappedTrigger: (A) -> Void
 
     /// Publisher to notify views about changes, using Combine's `objectWillChange`.
     public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
-    
+
     /// Current state of the ViewModel.
-    public var state: State { wrappedState() }
+    public var state: S { wrappedState() }
 
     /**
      Initializes an `AnyViewModel` with a given concrete ViewModel that conforms to `ViewModelProtocol`.
-     
+
      - Parameters:
         - viewModel: A concrete ViewModel instance conforming to `ViewModelProtocol`.
-     
+
      - Requires:
-        - The `viewModel` must have matching `State` and `Action` types.
+        - The `viewModel` must have matching `S`state  and `A` action types.
      */
-    public init<V: ViewModelProtocol>(_ viewModel: V) where V.State == State, V.Action == Action {
+    public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
         self.wrappedObjectWillChange = {
             viewModel
                 .objectWillChange
@@ -64,28 +64,28 @@ open class AnyViewModel<State: StateProtocol, Action: ActionProtocol>: Observabl
 
     /**
      Triggers an action on the ViewModel.
-     
+
      - Parameters:
         - action: The action to be triggered, conforming to `Action`.
      */
-    public func trigger(action: Action) {
+    public func trigger(action: A) {
         wrappedTrigger(action)
     }
 
     /**
      Provides dynamic member lookup, allowing access to properties of the `state` using dot notation.
-     
+
      - Parameters:
         - keyPath: The keyPath to the property in the `State`.
-     
+
      - Returns: The value of the property specified by the keyPath in the `State`.
      */
-    public subscript<Value>(dynamicMember keyPath: KeyPath<State, Value>) -> Value {
+    public subscript<Value>(dynamicMember keyPath: KeyPath<S, Value>) -> Value {
         state[keyPath: keyPath]
     }
 }
 
-extension AnyViewModel: Identifiable where State: Identifiable {
+extension AnyViewModel: Identifiable where S: Identifiable {
     /// The unique identifier for the ViewModel, derived from the state's identifier.
-    public var id: State.ID { state.id }
+    public var id: S.ID { state.id }
 }

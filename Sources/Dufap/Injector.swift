@@ -26,7 +26,7 @@ public class DependencyInjector: Injector {
  - Requires:
     - A state object that conforms to `InjectorState` and holds injected singletons and factories.
  */
-public protocol Injector: ObservableObject, ProtectedStateHolder where State == InjectorState {
+public protocol Injector: ObservableObject, ProtectedStateHolder where S == InjectorState {
 
     /**
      Injects a dependency into the injector's state.

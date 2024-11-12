@@ -20,7 +20,7 @@ import SwiftSyntaxMacros
 
     ```swift
     @ViewModel
-    class MyViewModel: ViewModelProtocol {
+    class MyViewModel {
         // Define state and actions here
     }
     ```
