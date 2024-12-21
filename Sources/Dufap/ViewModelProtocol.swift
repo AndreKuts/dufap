@@ -5,8 +5,8 @@ import Combine
  It inherits from `ProtectedStateHolder` to manage the state and `ObservableObject` to allow views to observe state changes.
  
  - Requirements:
-    - A `State` type conforming to `StateProtocol`, inherited from `ProtectedStateHolder`.
-    - An `Action` type conforming to `ActionProtocol`, representing actions or events that can trigger changes in state.
+    - A `S` state type conforming to `StateProtocol`, inherited from `ProtectedStateHolder`.
+    - An `A` action type conforming to `ActionProtocol`, representing actions or events that can trigger changes in state.
     - A method to trigger actions that modify the ViewModel's state.
  
  - Inherits:
@@ -16,16 +16,16 @@ import Combine
 public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where ObjectWillChangePublisher.Output == Void {
 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
-    associatedtype Action: ActionProtocol
+    associatedtype A: ActionProtocol
 
     /**
      Triggers a specified action that should modify the ViewModel's state.
-     
+
      - Parameters:
         - action: The action to be triggered, conforming to `Action`.
-     
+
      - Note:
         This function should handle the logic for how an action modifies the ViewModel's state.
      */
-    func trigger(action: Action)
+    func trigger(action: A)
 }

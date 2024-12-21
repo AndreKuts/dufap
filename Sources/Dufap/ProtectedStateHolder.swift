@@ -11,10 +11,10 @@ import Foundation
 public protocol ProtectedStateHolder: AnyObject {
 
     /// The type of state managed by the object, conforming to `StateProtocol`.
-    associatedtype State: StateProtocol
+    associatedtype S: StateProtocol
 
     /// The state instance being managed, conforming to the `StateProtocol`.
-    var state: State { get set }
+    var state: S { get set }
 
     /// A queue used to ensure that state updates are synchronized and thread-safe.
     var updateStateQueue: DispatchQueue { get }
@@ -27,11 +27,11 @@ public extension ProtectedStateHolder {
 
      - Parameters:
         - completion: A closure that is passed the `inout` state for modification.
-     
+
      - Important:
         - This function guarantees that state modifications are thread-safe and synchronous.
      */
-    func updateState(completion: @escaping (inout State) -> Void) {
+    func updateState(completion: @escaping (inout S) -> Void) {
         updateStateQueue.sync {
             completion(&state)
         }

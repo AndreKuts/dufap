@@ -48,15 +48,12 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
  - Usage:
     Apply the `@ViewModel` macro to a class or struct to create a ViewModel that manages a specific state and actions.
 
- - Parameters:
-    - `updateStateQueue`: A member property that is automatically synthesized for synchronizing state updates.
-
  - Example:
 
     ```swift
     @ViewModel
-    class MyViewModel: ViewModelProtocol {
-        // State and actions go here
+    class MyViewModel {
+        // Your logic implementation here
     }
     ```
 
@@ -66,10 +63,6 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
  - Requirements:
     - The generated ViewModel must have a state conforming to `StateProtocol`.
     - The actions must conform to `ActionProtocol`.
-
- - Limitations:
-    - The macro is designed for simple state and action management and may not handle complex scenarios out of the box.
-    - Custom logic in the ViewModel must still be implemented manually.
 
  - Supported Types:
     Any class or struct intended to serve as a ViewModel within an MVVM architecture, where state and action types conform to their respective protocols.

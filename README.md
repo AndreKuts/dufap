@@ -130,8 +130,8 @@ class ContentViewModel {
 
     // 9. Or add dependencies and states through the Injector.
     init(injector: any Injector) {
-        self.state = injector.extract(asType: .factory)
-        self.networkerService = injector.extract(asType: .singleton)
+        self.state = injector.extract(from: .factory)
+        self.networkerService = injector.extract(from: .singleton)
     }
 
     // 10. Define action handler function
