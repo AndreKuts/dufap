@@ -108,7 +108,6 @@ extension ViewModelMacro: MemberAttributeMacro {
  - How it Works:
     The macro performs the following tasks:
     - Generates an extension for the view type to conform to `ViewProtocol`.
-    - Adds an `@ObservedObject` property named `viewModel`, which is of type `AnyViewModel<State, Action>`.
 
  - Requirements:
     - The view must be declared with `@ViewWith`, including state and action types.
@@ -146,55 +145,13 @@ extension ViewStateActionMacro: ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
-        
+
         let syntax: DeclSyntax =
             """
             extension \(type.trimmed): ViewProtocol { }
             """
 
         return [syntax.cast(ExtensionDeclSyntax.self)]
-    }
-}
-
-extension ViewStateActionMacro: MemberMacro {
-    public static func expansion(
-        of node: AttributeSyntax,
-        providingMembersOf declaration: some DeclGroupSyntax,
-        conformingTo protocols: [TypeSyntax],
-        in context: some MacroExpansionContext
-    ) throws -> [DeclSyntax] {
-        guard
-            let structDecl: StructDeclSyntax = declaration.as(StructDeclSyntax.self),
-            let argumentsList = structDecl.attributes.first?
-                .as(AttributeSyntax.self)?.arguments?
-                .as(LabeledExprListSyntax.self),
-            let stateArgument = argumentsList.first(where: { $0.label?.text == "state" }),
-            let actionArgument = argumentsList.first(where: { $0.label?.text == "action" }),
-            let stateType = stateArgument.expression
-                .as(MemberAccessExprSyntax.self)?.base?
-                .as(DeclReferenceExprSyntax.self)?
-                .baseName.text 
-				?? stateArgument.expression
-				.as(DeclReferenceExprSyntax.self)?.baseName.text,
-            let actionType = actionArgument.expression
-                .as(MemberAccessExprSyntax.self)?.base?
-                .as(DeclReferenceExprSyntax.self)?
-				.baseName.text 
-				?? actionArgument.expression
-				.as(DeclReferenceExprSyntax.self)?.baseName.text
-
-        else {
-            throw MacroError.dufapGeneralError("Parsing State and/or Action type arguments")
-        }
-
-        return [
-            DeclSyntax(
-                """
-                @ObservedObject 
-                var viewModel: AnyViewModel<\(raw: stateType), \(raw: actionType)>
-                """
-            )
-        ]
     }
 }
 
