@@ -86,7 +86,10 @@ enum ContentAction: ActionProtocol {
 @ViewWith(state: ContentState, action: ContentAction)
 struct ContentView: View {
 
-    // 5 Add default init
+    // 5 Add default property & init
+    @ObservedObject
+    var viewModel: AnyViewModel<ContentState, ContentAction>
+
     init(_ viewModel: AnyViewModel<ContentState, ContentAction>) {
         self.viewModel = viewModel
     }
@@ -144,7 +147,7 @@ class ContentViewModel {
             // 12. Update state
             updateState { $0.number += 1 }
 
-            // This state update method is not protected if the actions co-occur from different threads
+            // This way of simultaneous actions from different threads can lead to losing some state value updates.
             // state.number += 1
 
         case .updateTextField(let newText):
