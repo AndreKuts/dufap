@@ -5,7 +5,34 @@ import Foundation
  `ActionProtocol` is a marker protocol for defining actions within the MVVM architecture.
  Actions represent user inputs or events that affect the application's state.
  */
-public protocol ActionProtocol { }
+
+@frozen
+public enum TriggerMode {
+    case sync
+    case async
+}
+
+public protocol ActionProtocol {
+
+    associatedtype SA: SyncActionProtocol
+    associatedtype AA: AsyncActionProtocol
+
+    var triggerMode: TriggerMode { get }
+}
+
+public protocol SyncActionProtocol { }
+
+public protocol AsyncActionProtocol {
+    var cancelID: String { get }
+}
+
+public extension AsyncActionProtocol {
+    var cancelID: String { "empty" }
+}
+
+public extension ActionProtocol {
+    var triggerMode: TriggerMode { .sync }
+}
 
 /**
  `StateProtocol` is a marker protocol for defining state within the MVVM architecture.
@@ -34,7 +61,10 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
     private let wrappedState: () -> S
 
     /// A closure that triggers an action on the ViewModel.
-    private let wrappedTrigger: (A) -> Void
+    private let wrappedTrigger: (A.SA) -> Void
+    private let wrappedTriggerAsync: (A.AA) async -> Void
+
+    private let bag: CancellableBag<String>
 
     /// Publisher to notify views about changes, using Combine's `objectWillChange`.
     public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
@@ -60,6 +90,8 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
         }
         self.wrappedState = { viewModel.state }
         self.wrappedTrigger = viewModel.trigger
+        self.wrappedTriggerAsync = viewModel.triggerAsync
+        self.bag = viewModel.bag
     }
 
     /**
@@ -69,7 +101,21 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
         - action: The action to be triggered, conforming to `Action`.
      */
     public func trigger(action: A) {
-        wrappedTrigger(action)
+
+        switch action {
+
+        case let syncAction as A.SA:
+            wrappedTrigger(syncAction)
+
+        case let asyncAction as A.AA:
+            Task {
+                await wrappedTriggerAsync(asyncAction)
+            }
+            .store(in: bag, as: asyncAction.cancelID)
+
+        default:
+            assertionFailure("Unhandled action type: \(action)")
+        }
     }
 
     /**

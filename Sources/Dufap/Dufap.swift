@@ -17,6 +17,13 @@
     ```swift
     @ViewWith(state: MyState.self, action: MyAction.self)
     struct MyView: View {
+
+        @ObserverObject var viewModel: AnyViewModel<S, A>
+
+        init(_ viewModel: AnyViewModel<S, A>) {
+            self.viewModel = viewModel
+        }
+
         var body: some View {
             // Your view implementation here
         }
@@ -24,7 +31,7 @@
     ```
 
  - How it Works:
-    The `ViewWith` macro generates a conforming SwiftUI view struct that integrates with a `ViewModel` managing the specified state and actions. It automatically provides a `viewModel` property and an initializer to inject the `ViewModel`.
+    The `ViewWith` macro generates a conforming SwiftUI view struct that integrates with a `ViewModel` managing the specified state and actions.
 
  - Requirements:
     - The `state` type must conform to `StateProtocol`.
@@ -38,7 +45,7 @@
     Any view that needs to bind with a state and action for MVVM architecture, where both types conform to the specified protocols.
  */
 @attached(extension, conformances: ViewProtocol)
-@attached(member, names: named(viewModel), named(init))
+@attached(member, names: named(init))
 public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewStateActionMacro")
 
 /**
@@ -68,6 +75,11 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
     Any class or struct intended to serve as a ViewModel within an MVVM architecture, where state and action types conform to their respective protocols.
  */
 @attached(extension, conformances: ViewModelProtocol)
-@attached(member, names: named(updateStateQueue))
+@attached(member, names: arbitrary)
 @attached(memberAttribute)
-public macro ViewModel() = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+public macro ViewModel<A: ActionProtocol>(action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+
+// Action Macro
+@attached(extension, conformances: ActionProtocol)
+@attached(member, names: arbitrary)
+public macro Action() = #externalMacro(module: "DufapMacros", type: "ActionMacro")

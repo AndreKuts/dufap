@@ -18,6 +18,8 @@ public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
     associatedtype A: ActionProtocol
 
+    var bag: CancellableBag<String> { get }
+
     /**
      Triggers a specified action that should modify the ViewModel's state.
 
@@ -27,5 +29,13 @@ public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where 
      - Note:
         This function should handle the logic for how an action modifies the ViewModel's state.
      */
-    func trigger(action: A)
+    func trigger(action: A.SA)
+
+    func triggerAsync(action: A.AA) async
+
+}
+
+extension Never: AsyncActionProtocol { }
+public extension ViewModelProtocol where A.AA == Never {
+    func triggerAsync(action: Never) async { }
 }
