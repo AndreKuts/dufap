@@ -156,6 +156,18 @@ extension ViewStateActionMacro: ExtensionMacro {
 }
 
 
+extension ViewStateActionMacro: MemberMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingMembersOf declaration: some DeclGroupSyntax,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+        return []
+    }
+}
+
+
 // MARK: - MacroError
 enum MacroError: Error {
     case dufapGeneralError(String)
