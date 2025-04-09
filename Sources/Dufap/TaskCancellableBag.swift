@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 
 public protocol CancelableAction {
     var cancelID: String { get }
@@ -6,57 +7,60 @@ public protocol CancelableAction {
 
 public final class CancellableBag<CancelID: Hashable> {
 
-    /// Storage for `AnyCancellable` objects, indexed by an ID.
-    private var bag: [CancelID: AnyCancellable] = [:]
+    private var bag: [CancelID: Any] = [:]
 
     public init() {}
 
-    /// Cancels and removes the task associated with the specified `id`.
-    /// - Parameter id: The identifier of the task to cancel.
-    public func cancel(id: CancelID) {
-        bag[id]?.cancel()
-        bag.removeValue(forKey: id)
+    @discardableResult
+    public func cancel(id: CancelID) -> Any? {
+
+        guard let value = bag.removeValue(forKey: id) else {
+            return nil
+        }
+
+        if let cancellable = value as? AnyCancellable {
+            cancellable.cancel()
+        } else
+
+        if let observer = value as? NSKeyValueObservation {
+            observer.invalidate()
+        }
+
+        return value
     }
 
-    /// Cancels and removes all tasks in the bag.
     public func cancelAll() {
-        bag.values.forEach { $0.cancel() }
-        bag.removeAll()
+        bag.forEach { key, _ in
+            cancel(id: key)
+        }
     }
 
-    /// Adds a cancellable task to the bag, replacing any existing task with the same ID.
-    /// - Parameters:
-    ///   - id: The identifier for the task.
-    ///   - cancellable: The `AnyCancellable` task to add.
-    public func add(id: CancelID, cancellable: AnyCancellable) {
-        bag[id]?.cancel()
-        bag[id] = cancellable
-    }
-
-    /// Accesses the `AnyCancellable` associated with a given ID for reading and writing.
-    /// - Parameter id: The identifier of the task to access.
-    /// - Returns: The `AnyCancellable` associated with the ID, or `nil` if it doesn't exist.
-    public subscript(id: CancelID) -> AnyCancellable? {
-        get {
-            bag[id]
-        }
-        set {
-            if let newValue = newValue {
-                bag[id] = newValue
-            } else {
-                bag.removeValue(forKey: id)
-            }
-        }
+    public func add(id: CancelID, _ any: Any?) {
+        cancel(id: id)
+        bag[id] = any
     }
 }
 
 public extension Task {
-
-    /// Stores the task's cancellation token in a `CancellableBag` with a unique identifier.
-    /// - Parameters:
-    ///   - bag: The `CancellableBag` where the cancellation token will be stored.
-    ///   - id: The identifier used to associate the task's cancellation token within the bag.
     func store<ID: Hashable>(in bag: CancellableBag<ID>, as id: ID) {
-        bag.add(id: id, cancellable: AnyCancellable(cancel))
+        bag.add(id: id, AnyCancellable(cancel))
+    }
+}
+
+public extension AnyCancellable {
+    func store<ID: Hashable>(in bag: CancellableBag<ID>, as id: ID) {
+        bag.add(id: id, self)
+    }
+}
+
+public extension NSKeyValueObservation {
+    func store<ID: Hashable>(in bag: CancellableBag<ID>, as id: ID) {
+        bag.add(id: id, self)
+    }
+}
+
+public extension NSObjectProtocol {
+    func store<ID: Hashable>(in bag: CancellableBag<ID>, as id: ID) {
+        bag.add(id: id, self)
     }
 }
