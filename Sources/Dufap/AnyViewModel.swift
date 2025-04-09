@@ -5,7 +5,19 @@ import Foundation
  `ActionProtocol` is a marker protocol for defining actions within the MVVM architecture.
  Actions represent user inputs or events that affect the application's state.
  */
-public protocol ActionProtocol { }
+public protocol ActionProtocol {
+    var trigerMode: TriggerMode { get }
+}
+
+extension ActionProtocol {
+    public var trigerMode: TriggerMode { .sync }
+}
+
+@frozen
+public enum TriggerMode {
+    case sync
+    case async
+}
 
 /**
  `StateProtocol` is a marker protocol for defining state within the MVVM architecture.

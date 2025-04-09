@@ -1,5 +1,9 @@
 import Combine
 
+public protocol CancelableAction {
+    var cancelID: String { get }
+}
+
 public final class CancellableBag<CancelID: Hashable> {
 
     /// Storage for `AnyCancellable` objects, indexed by an ID.

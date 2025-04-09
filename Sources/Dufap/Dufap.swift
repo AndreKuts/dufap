@@ -78,3 +78,8 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
 @attached(member, names: named(updateStateQueue))
 @attached(memberAttribute)
 public macro ViewModel() = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+
+
+// 
+@attached(extension, conformances: CancelableAction, names: named(cancelID))
+public macro CancelableAction() = #externalMacro(module: "DufapMacros", type: "CancelableActionMacro")

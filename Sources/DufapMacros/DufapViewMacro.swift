@@ -2,6 +2,7 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
 
 // MARK: - ViewModelMacro
 /**
@@ -155,7 +156,6 @@ extension ViewStateActionMacro: ExtensionMacro {
     }
 }
 
-
 extension ViewStateActionMacro: MemberMacro {
     public static func expansion(
         of node: AttributeSyntax,
@@ -167,10 +167,67 @@ extension ViewStateActionMacro: MemberMacro {
     }
 }
 
+public enum CancelableActionMacro: MemberMacro {
 
-// MARK: - MacroError
-enum MacroError: Error {
-    case dufapGeneralError(String)
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [ExtensionDeclSyntax] {
+
+        let syntax: DeclSyntax =
+            """
+            extension \(type.trimmed): CancelableAction { }
+            """
+
+        return [syntax.cast(ExtensionDeclSyntax.self)]
+    }
+
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingMembersOf declaration: some DeclGroupSyntax,
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+
+        guard let enumDecl = declaration.as(EnumDeclSyntax.self) else {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@CancelableAction` can only be applied to enums.")
+            ))
+            return []
+        }
+
+        let caseNames = enumDecl.memberBlock.members.compactMap { member -> String? in
+            guard let enumCase = member.decl.as(EnumCaseDeclSyntax.self),
+                  let firstCase = enumCase.elements.first
+            else {
+                return nil
+            }
+            return firstCase.name.text
+        }
+
+        let cases = caseNames
+            .map { "case .\($0): return \"cancelID/\($0)\"" }
+            .joined(separator: "\n        ")
+
+        let cancelIDDecl = """
+        var cancelID: String {
+            switch self {
+                \(cases)
+            }
+        }
+        """
+
+        return [DeclSyntax(stringLiteral: cancelIDDecl)]
+    }
+}
+
+struct SimpleDiagnostic: DiagnosticMessage {
+    let message: String
+    var severity: DiagnosticSeverity { .error }
+    var diagnosticID: MessageID { MessageID(domain: "CancelableActionMacro", id: message) }
 }
 
 
