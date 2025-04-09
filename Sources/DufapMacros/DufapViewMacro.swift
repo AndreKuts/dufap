@@ -235,7 +235,7 @@ struct SimpleDiagnostic: DiagnosticMessage {
 @main
 struct DufapPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        CancelableActionMacro.self
+        CancelableActionMacro.self,
         ViewStateActionMacro.self,
         ViewModelMacro.self,
     ]
