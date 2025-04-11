@@ -14,6 +14,11 @@ let package = Package(
             name: "Dufap",
             targets: ["Dufap"]
         ),
+
+            .executable(
+                name: "DufapClient",
+                targets: ["DufapClient"]
+            )
     ],
 
     dependencies: [
@@ -32,6 +37,8 @@ let package = Package(
         ),
 
         .target(name: "Dufap", dependencies: ["DufapMacros"]),
+
+        .executableTarget(name: "DufapClient", dependencies: ["Dufap"]),
 
         .testTarget(
             name: "DufapTests",
