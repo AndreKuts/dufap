@@ -1,10 +1,6 @@
 import Combine
 import Foundation
 
-public protocol CancelableAction {
-    var cancelID: String { get }
-}
-
 public final class CancellableBag<CancelID: Hashable> {
 
     private var bag: [CancelID: Any] = [:]

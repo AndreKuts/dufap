@@ -75,11 +75,11 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
     Any class or struct intended to serve as a ViewModel within an MVVM architecture, where state and action types conform to their respective protocols.
  */
 @attached(extension, conformances: ViewModelProtocol)
-@attached(member, names: named(updateStateQueue))
+@attached(member, names: arbitrary)
 @attached(memberAttribute)
-public macro ViewModel() = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+public macro ViewModel<A: ActionProtocol>(action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
 
-
-// 
-@attached(extension, conformances: CancelableAction, names: named(cancelID))
-public macro CancelableAction() = #externalMacro(module: "DufapMacros", type: "CancelableActionMacro")
+// Action Macro
+@attached(extension, conformances: ActionProtocol)
+@attached(member, names: arbitrary)
+public macro Action() = #externalMacro(module: "DufapMacros", type: "ActionMacro")
