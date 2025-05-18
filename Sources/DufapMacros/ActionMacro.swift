@@ -2,7 +2,7 @@
 //  ActionMacro.swift
 //  Dufap
 //
-//  Created by Andrew Kuts on 2025-04-10.
+//  Created by Andrew Kuts
 //
 
 import SwiftSyntax
@@ -26,35 +26,47 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
             return []
         }
 
-        let syncDecl =
-            """
-            typealias SA = SyncAction
-            """
+        let originalEnumName = enumDecl.name.text
 
-        let neverAsync =
-            """
-            typealias AA = Never
-            """
+        let syncDecl = "typealias SA = SyncAction"
+        let neverSync = "typealias SA = Never"
+
+        let neverAsync = "typealias AA = Never"
+        let asyncDecl = "typealias AA = AsyncAction"
 
         let members = enumDecl.memberBlock.members
-        guard let triggerModeVarDecl = members.first(where: {
-            $0.decl.is(VariableDeclSyntax.self) && $0.decl.as(VariableDeclSyntax.self)?.bindings.first?.pattern.as(IdentifierPatternSyntax.self)?.identifier.text == "triggerMode"
-        }) else {
+        let allCasesWithTypes = makeCaseWithTypes(memberList: members)
+        let totalCount = allCasesWithTypes.count
+        let cases = allCasesWithTypes
+            .map { "    case .\($0.name): return \"cancel_\($0.name)\"" }
+            .joined(separator: "\n")
 
-            let caseNames = members.compactMap { member -> String? in
-                guard let enumCase = member.decl.as(EnumCaseDeclSyntax.self),
-                      let firstCase = enumCase.elements.first else {
-                    return nil
-                }
-                return firstCase.name.text
+        let cancelIDDecl = """
+        var cancelID: String {
+            switch self {
+        \(cases)
             }
+        }
+        """
 
-            return [
-                DeclSyntax(stringLiteral: makeEnum(name: "SyncAction", cases: caseNames)),
-                DeclSyntax(stringLiteral: makeEnum(name: "AsyncAction", cases: [])),
-                DeclSyntax(stringLiteral: syncDecl),
-                DeclSyntax(stringLiteral: neverAsync),
+        guard let triggerModeVarDecl = members.first(
+            where: {
+                $0.decl.is(VariableDeclSyntax.self)
+                && $0.decl.as(VariableDeclSyntax.self)?.bindings.first?.pattern.as(IdentifierPatternSyntax.self)?.identifier.text == "triggerMode"
+            }
+        ) else {
+
+            let result = [
+                cancelIDDecl,
+                makeEnum(name: "SyncAction", cases: allCasesWithTypes, totalCount: totalCount, originalEnumName: originalEnumName),
+                makeEnum(name: "AsyncAction", cases: [], totalCount: totalCount, originalEnumName: originalEnumName),
+                allCasesWithTypes.isEmpty ? neverSync : syncDecl,
+                neverAsync,
             ]
+            .compactMap { $0 }
+            .map { DeclSyntax(stringLiteral: $0) }
+
+            return result
         }
 
         guard let switchCases = triggerModeVarDecl.decl
@@ -71,86 +83,83 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
             .as(SwitchExprSyntax.self)?
             .cases
         else {
-            let caseNames = members.compactMap { member -> String? in
-                guard let enumCase = member.decl.as(EnumCaseDeclSyntax.self),
-                      let firstCase = enumCase.elements.first else {
-                    return nil
-                }
-                return firstCase.name.text
-            }
-
-            return [
-                DeclSyntax(stringLiteral: makeEnum(name: "SyncAction", cases: caseNames)),
-                DeclSyntax(stringLiteral: makeEnum(name: "AsyncAction", cases: [])),
-                DeclSyntax(stringLiteral: syncDecl),
-                DeclSyntax(stringLiteral: neverAsync),
-            ]
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`triggerMode` must be a computed property with a switch on self")
+            ))
+            return []
         }
 
-        var syncCases: [String] = []
-        var asyncCases: [String] = []
+        var syncCases: [CaseInfo] = []
+        var asyncCases: [CaseInfo] = []
+        var handeledNames: [String] = []
 
         for switchCase in switchCases {
-            guard let caseSyntax = switchCase.as(SwitchCaseSyntax.self),
-                  let name = caseSyntax.statements.first?.item.as(ReturnStmtSyntax.self)?.expression?.as(MemberAccessExprSyntax.self)?.declName.baseName.text,
-                  let caseItems = caseSyntax.label.as(SwitchCaseLabelSyntax.self)?.caseItems
-            else {
-                continue
-            }
+            if let caseSyntax = switchCase.as(SwitchCaseSyntax.self),
+               let name = caseSyntax.statements.first?.item.as(ReturnStmtSyntax.self)?.expression?.as(MemberAccessExprSyntax.self)?.declName.baseName.text,
+               let caseItems = caseSyntax.label.as(SwitchCaseLabelSyntax.self)?.caseItems {
 
-            let caseItemNames = caseItems.compactMap { $0.pattern.as(ExpressionPatternSyntax.self)?.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text }
+                let caseItemNames = caseItems.compactMap { $0.pattern.as(ExpressionPatternSyntax.self)?.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text }
 
-            if name == "sync" {
-                caseItemNames.forEach { syncCases.append($0) }
-            } else if name == "async" {
-                caseItemNames.forEach { asyncCases.append($0) }
-            }
-        }
+                if name == "sync" {
+                    for caseItemName in caseItemNames {
+                        if let caseWithType = allCasesWithTypes.first(where: { $0.name == caseItemName }) {
+                            syncCases.append(caseWithType)
+                            handeledNames.append(caseItemName)
+                        }
+                    }
+                } else
 
-        func makeEnum(name: String, cases: [String]) -> String {
-            let casesDecl = cases.map { "case \($0)" }.joined(separator: "\n")
-            let nameDecl = "\(name)Protocol"
-
-            let source = """
-                enum \(name): \(nameDecl) {
-                \(casesDecl)
+                if name == "async" {
+                    for caseItemName in caseItemNames {
+                        if let caseWithType = allCasesWithTypes.first(where: { $0.name == caseItemName }) {
+                            asyncCases.append(caseWithType)
+                            handeledNames.append(caseItemName)
+                        }
+                    }
                 }
-                """
-            return source
-        }
 
-        let caseNames = members.compactMap { member -> String? in
-            guard let enumCase = member.decl.as(EnumCaseDeclSyntax.self),
-                  let firstCase = enumCase.elements.first else {
-                return nil
+                else {
+                    context.diagnose(Diagnostic(
+                        node: Syntax(switchCase),
+                        message: SimpleDiagnostic(message: "Only `sync` and `async` trigger modes are supported")
+                    ))
+                    return []
+                }
+
+            } else
+
+            if let defaulLabel = switchCase.as(SwitchCaseSyntax.self)?.label.as(SwitchDefaultLabelSyntax.self),
+               defaulLabel.defaultKeyword.text == "default",
+               let defaulReturn = switchCase.as(SwitchCaseSyntax.self)?.statements.first?.item.as(ReturnStmtSyntax.self)?.expression?.as(MemberAccessExprSyntax.self)?.declName.baseName.text {
+
+                let unhendeledCases = allCasesWithTypes.filter { !handeledNames.contains($0.name) }
+
+                if defaulReturn == "sync" {
+                    syncCases.append(contentsOf: unhendeledCases)
+                } else if defaulReturn == "async" {
+                    asyncCases.append(contentsOf: unhendeledCases)
+                } else {
+                    context.diagnose(Diagnostic(
+                        node: Syntax(switchCase),
+                        message: SimpleDiagnostic(message: "Only `sync` and `async` trigger modes are supported")
+                    ))
+                    return []
+                }
             }
-            return firstCase.name.text
         }
 
-        let cases = caseNames
-            .map { "    case .\($0): return \"cancel_\($0)\"" }
-            .joined(separator: "\n")
-
-        let cancelIDDecl = """
-        var cancelID: String {
-            switch self {
-        \(cases)
-            }
-        }
-        """
-
-        let asyncDecl =
-        """
-        typealias AA = AsyncAction
-        """
-
-        return [
-            DeclSyntax(stringLiteral: cancelIDDecl),
-            DeclSyntax(stringLiteral: makeEnum(name: "SyncAction", cases: syncCases)),
-            DeclSyntax(stringLiteral: makeEnum(name: "AsyncAction", cases: asyncCases)),
-            DeclSyntax(stringLiteral: syncDecl),
-            DeclSyntax(stringLiteral: asyncDecl),
+        let result = [
+            cancelIDDecl,
+            makeEnum(name: "SyncAction", cases: syncCases, totalCount: totalCount, originalEnumName: originalEnumName),
+            makeEnum(name: "AsyncAction", cases: asyncCases, totalCount: totalCount, originalEnumName: originalEnumName),
+            syncCases.isEmpty ? neverSync : syncDecl,
+            asyncCases.isEmpty ? neverAsync : asyncDecl,
         ]
+        .compactMap { $0 }
+        .map { DeclSyntax(stringLiteral: $0) }
+
+        return result
     }
 
     public static func expansion(
@@ -160,12 +169,126 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
-
-        let syntax: DeclSyntax =
-            """
-            extension \(type.trimmed): ActionProtocol { }
-            """
-
+        let syntax: DeclSyntax = "extension \(type.trimmed): ActionProtocol { }"
         return [syntax.cast(ExtensionDeclSyntax.self)]
     }
+
+    private static func makeEnum(name: String, cases: [CaseInfo], totalCount: Int, originalEnumName: String) -> String? {
+        guard !cases.isEmpty else {
+            return nil
+        }
+
+        let sortedCases = cases.sorted { $0.name < $1.name }
+        let casesDecl = sortedCases
+            .map { $0.asString() }
+            .joined(separator: "\n")
+
+        let nameDecl = "\(name)Protocol"
+
+        let initCases = sortedCases.map { caseInfo -> String in
+            guard let params = caseInfo.parameters, !params.isEmpty else {
+                return "    case .\(caseInfo.name): self = .\(caseInfo.name)"
+            }
+
+            let pattern = params.enumerated().map { idx, param in
+                let varName = param.secondName ?? param.firstName ?? "param\(idx)"
+                return "let \(varName)"
+            }
+            .joined(separator: ", ")
+
+            let initArgs = params.enumerated().map { idx, param in
+                let label = param.firstName ?? "_"
+                let varName = param.secondName ?? param.firstName ?? "param\(idx)"
+                return "\(label): \(varName)"
+            }
+            .joined(separator: ", ")
+
+            return "    case .\(caseInfo.name)(\(pattern)): self = .\(caseInfo.name)(\(initArgs))"
+        }
+        .joined(separator: "\n")
+
+        let defaultNil = cases.count == totalCount ? "" : "default: return nil"
+        let initDecl = """
+
+        init?(from original: any ActionProtocol) {
+            guard let original = original as? \(originalEnumName) else { return nil }
+            switch original {
+            \(initCases)
+            \(defaultNil)
+            }
+        }
+        """
+
+        return """
+        enum \(name): \(nameDecl) {
+        \(initDecl)
+
+        \(casesDecl)
+        }
+        """
+    }
+
+    private static func makeCaseWithTypes(memberList: MemberBlockItemListSyntax) -> [CaseInfo] {
+        var cases: [CaseInfo] = []
+
+        for block in memberList {
+            guard let enumCase = block.decl.as(EnumCaseDeclSyntax.self) else { continue }
+
+            for element in enumCase.elements {
+                let name = element.name.text
+                let parameters: [CaseParameterInfo]? = element.parameterClause?.parameters.map { param in
+                    let firstName = param.firstName?.text
+                    let secondName = param.secondName?.text
+                    let type = param.type.trimmedDescription
+                    let defaultValue = param.defaultValue?.value.trimmedDescription ?? nil
+
+                    return CaseParameterInfo(
+                        firstName: firstName,
+                        secondName: secondName,
+                        type: type,
+                        defaultValue: defaultValue
+                    )
+                }
+
+                cases.append(CaseInfo(name: name, parameters: parameters))
+            }
+        }
+
+        return cases
+    }
+}
+
+extension SyntaxProtocol {
+    var trimmedDescription: String {
+        self.description.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+struct CaseInfo {
+
+    let name: String
+    let parameters: [CaseParameterInfo]?
+
+    func asString() -> String {
+        guard let parameters, !parameters.isEmpty else {
+            return "case \(name)"
+        }
+
+        let paramList = parameters.map { param -> String in
+            let first = param.firstName ?? "_"
+            let second = param.secondName.map { " \($0)" } ?? ""
+            let type = param.type
+            let defaultVal = param.defaultValue.map { " = \($0)" } ?? ""
+            return "\(first)\(second): \(type)\(defaultVal)"
+        }.joined(separator: ", ")
+
+        return "case \(name)(\(paramList))"
+    }
+}
+
+struct CaseParameterInfo {
+    let firstName: String?
+    let secondName: String?
+    let type: String
+    let defaultValue: String?
 }

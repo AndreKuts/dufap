@@ -2,7 +2,7 @@
 //  ViewModelMacro.swift
 //  Dufap
 //
-//  Created by Andrew Kuts on 2025-04-10.
+//  Created by Andrew Kuts
 //
 
 import SwiftCompilerPlugin
@@ -53,10 +53,7 @@ extension ViewModelMacro: ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
 
-        let viewModel: DeclSyntax =
-            """
-            extension \(type.trimmed): ViewModelProtocol { }
-            """
+        let viewModel: DeclSyntax = "extension \(type.trimmed): ViewModelProtocol { }"
 
         return [
             viewModel.cast(ExtensionDeclSyntax.self),
@@ -75,14 +72,25 @@ extension ViewModelMacro: MemberMacro {
         let args = declaration.attributes.compactMap { $0.as(AttributeSyntax.self) }.first?.arguments
         let actionType = args?.as(LabeledExprListSyntax.self)?.first?.expression.as(MemberAccessExprSyntax.self)?.base?.as(DeclReferenceExprSyntax.self)?.baseName.text ?? ""
 
+        var deinitDecl = """
+        deinit { 
+            bag.cancelAll()
+        }
+        """
+
+        if let deinitDeclSyntax = declaration.memberBlock.members.compactMap({ $0.decl.as(DeinitializerDeclSyntax.self) }).first, deinitDeclSyntax.deinitKeyword.text == "deinit" {
+            deinitDecl = ""
+        }
+
         return [
             """
             typealias A = \(raw: actionType)
 
-            var bag: CancellableBag<String> = CancellableBag()
+            var bag: CancellableBag = CancellableBag()
 
             var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.\(raw: declaration.as(ClassDeclSyntax.self)?.name.text.lowercased() ?? "unknown_object")")
 
+            \(raw: deinitDecl)
             """
         ]
     }

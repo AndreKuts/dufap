@@ -2,7 +2,7 @@
 //  ViewStateActionMacro.swift
 //  Dufap
 //
-//  Created by Andrew Kuts on 2025-04-10.
+//  Created by Andrew Kuts
 //
 
 import SwiftCompilerPlugin

@@ -8,5 +8,6 @@ struct DufapPlugin: CompilerPlugin {
         ActionMacro.self,
         ViewStateActionMacro.self,
         ViewModelMacro.self,
+        PathMacro.self
     ]
 }

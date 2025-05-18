@@ -118,7 +118,7 @@ struct ContentView: View {
 }
 
 // 6. Define ViewModel using macro
-@ViewModel
+@ViewModel(action: ContentAction.self)
 class ContentViewModel {
 
     // 7. define a state

@@ -2,7 +2,7 @@
 //  SimpleDiagnostic.swift
 //  Dufap
 //
-//  Created by Andrew Kuts on 2025-04-10.
+//  Created by Andrew Kuts
 //
 
 import SwiftDiagnostics
@@ -10,5 +10,5 @@ import SwiftDiagnostics
 struct SimpleDiagnostic: DiagnosticMessage {
     let message: String
     var severity: DiagnosticSeverity { .error }
-    var diagnosticID: MessageID { MessageID(domain: "ActionMacro", id: message) }
+    var diagnosticID: MessageID { MessageID(domain: "Dufap", id: message) }
 }
