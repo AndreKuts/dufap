@@ -1,3 +1,10 @@
+//
+//  ViewProtocol.swift
+//  Dufap
+//
+//  Created by Andrew Kuts
+//
+
 import SwiftUI
 
 /**

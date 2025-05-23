@@ -1,3 +1,10 @@
+//
+//  ProtectedStateHolder.swift
+//  Dufap
+//
+//  Created by Andrew Kuts
+//
+
 import Foundation
 
 /**

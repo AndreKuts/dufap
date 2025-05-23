@@ -48,6 +48,7 @@
 @attached(member, names: named(init))
 public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewStateActionMacro")
 
+
 /**
  `ViewModel` is a macro that generates a ViewModel that conforms to the `ViewModelProtocol`.
  It automatically synthesizes the necessary state management and action handling logic.
@@ -75,6 +76,36 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
     Any class or struct intended to serve as a ViewModel within an MVVM architecture, where state and action types conform to their respective protocols.
  */
 @attached(extension, conformances: ViewModelProtocol)
-@attached(member, names: named(updateStateQueue))
+@attached(member, names: arbitrary)
 @attached(memberAttribute)
-public macro ViewModel() = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+public macro ViewModel<A: ActionProtocol>(action: A.Type) = #externalMacro(module: "DufapMacros", type: "ViewModelMacro")
+
+
+/**
+ `@Action` is a custom macro that transforms an enum into a set of actions conforming to `ActionProtocol`.
+
+ This macro:
+ - Adds protocol conformance to `ActionProtocol`
+ - Injects new members (e.g., derived `SyncAction` or `AsyncAction` enums)
+ - Helps with unidirectional data flow by modelling actions
+
+ Internally, it uses annotations such as `triggerMode` to determine whether to generate synchronous or asynchronous variants.
+*/
+@attached(extension, conformances: ActionProtocol)
+@attached(member, names: arbitrary)
+public macro Action() = #externalMacro(module: "DufapMacros", type: "ActionMacro")
+
+
+/**
+ `@Pathable` enhances an enum (typically representing a navigation path) with identity and hashing capabilities.
+
+ This macro:
+ - Conforms the enum to `Hashable`, `Equatable`, and `Identifiable`
+ - Injects an `index` property to reflect the enum case order
+ - Provides an `id` property based on the index
+ - Implements `hash(into:)` and `==` using the index
+
+ It's particularly useful when enums are used in SwiftUI navigation stacks or `ForEach` constructs.
+*/
+@attached(extension, conformances: Hashable, Equatable, Identifiable, names: named(index), named(id), named(hash(into:)), named(==))
+public macro Pathable() = #externalMacro(module: "DufapMacros", type: "PathMacro")
