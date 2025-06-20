@@ -11,11 +11,8 @@ import Foundation
  The `Injector` protocol defines the interface for dependency injection.
  It extends the `ObservableObject` protocol, allowing this object to be used as an environment object.
  Additionally, it extends the `ProtectedStateHolder` protocol and provides methods to inject and extract dependencies safety..
- 
- - Requires:
-    - A state object that conforms to `InjectorState` and holds injected singletons and factories.
  */
-public protocol Injector: ObservableObject, ProtectedStateHolder where S == InjectorState {
+public protocol Injector {
 
     /**
      Injects a dependency into the injector's state.
@@ -56,7 +53,20 @@ public protocol Injector: ObservableObject, ProtectedStateHolder where S == Inje
      - Returns: The extracted dependency of type `T`.
      */
     func extractThrows<T>(from injectType: InjectingType) throws -> T
+
+    /**
+     Extracts a dependency from the injector's state, throwing an error if it does not exist.
+
+     - Parameters:
+        - injectType: The type of injection (`singleton`, `factory`, or `both`).
+
+     - Throws: `InjectorError.typeNotFound` if the dependency is not registered.
+
+     - Returns: The extracted dependency of type `T?`.
+     */
+    func extractOptional<T>(from injectType: InjectingType) -> T?
 }
+
 
 public extension Injector {
 
@@ -68,86 +78,158 @@ public extension Injector {
     func extract<T>() -> T {
         extract(from: .both)
     }
+}
 
-    func inject<T>(for injectType: InjectingType, typeBuilder builder: @escaping (any Injector) -> T) {
-        switch injectType {
-        case .singleton:
-            updateState { $0.singletons[ObjectIdentifier(T.self)] = builder(self) }
-        case .factory:
-            updateState { $0.factories[ObjectIdentifier(T.self)] = builder }
-        case .both:
-            updateState {
-                $0.singletons[ObjectIdentifier(T.self)] = builder(self)
-                $0.factories[ObjectIdentifier(T.self)] = builder
+
+public final class DependencyInjector: Injector {
+
+    private let queue = DispatchQueue(label: "com.dufap.dependencies.injector", attributes: .concurrent)
+    private var singletons: [ObjectIdentifier: Any] = [:]
+    private var factories: [ObjectIdentifier: Any] = [:]
+
+    public init() {}
+
+    public func inject<T>(for injectType: InjectingType, typeBuilder builder: @escaping (any Injector) -> T) {
+
+        let key = ObjectIdentifier(T.self)
+
+        queue.sync(flags: .barrier) {
+
+            switch injectType {
+            case .singleton:
+                singletons[key] = builder(self)
+            case .factory:
+                factories[key] = builder
+            case .both:
+                singletons[key] = builder(self)
+                factories[key] = builder
             }
         }
     }
 
-    func eject<T>(type: T.Type, from injectType: InjectingType) {
-        switch injectType {
-        case .singleton:
-            updateState { $0.singletons.removeValue(forKey: ObjectIdentifier(T.self))}
-        case .factory:
-            updateState { $0.factories.removeValue(forKey: ObjectIdentifier(T.self))}
-        case .both:
-            updateState {
-                $0.singletons.removeValue(forKey: ObjectIdentifier(T.self))
-                $0.factories.removeValue(forKey: ObjectIdentifier(T.self))
+    public func eject<T>(type: T.Type, from injectType: InjectingType) {
+
+        let key = ObjectIdentifier(T.self)
+
+        queue.sync(flags: .barrier) { [weak self] in
+
+            guard let self else { return }
+            switch injectType {
+            case .singleton:
+                self.singletons.removeValue(forKey: key)
+            case .factory:
+                self.factories.removeValue(forKey: key)
+            case .both:
+                self.singletons.removeValue(forKey: key)
+                self.factories.removeValue(forKey: key)
             }
         }
     }
 
-    func extractThrows<T>(from injectType: InjectingType) throws -> T {
-        switch injectType {
-        case .singleton:
-            if let singleton = state.singletons[ObjectIdentifier(T.self)] as? T {
-                return singleton
-            } else {
-                throw InjectorError.typeNotFound(message: "Error: Unable to extract type as a singleton for an unregistered type: \(T.self)")
+    public func extractOptional<T>(from injectType: InjectingType) -> T? {
+
+        if let optionalType = T.self as? AnyOptional.Type {
+
+            let wrappedType = optionalType.wrappedType()
+            let key = ObjectIdentifier(wrappedType)
+
+            let value: Any? = {
+                switch injectType {
+                case .singleton:
+                    return singletons[key]
+                case .factory:
+                    return (factories[key] as? (any Injector) -> Any)?(self)
+                case .both:
+                    return singletons[key] ?? (factories[key] as? (any Injector) -> Any)?(self)
+                }
+            }()
+
+            if let casted = value {
+                return casted as? T
             }
 
-        case .factory:
-            if let factory = state.factories[ObjectIdentifier(T.self)] as? (any Injector) -> T {
-                return factory(self)
-            } else {
-                throw InjectorError.typeNotFound(message: "Error: Unable to extract type as a factory for an unregistered type: \(T.self)")
+        } else {
+
+            let key = ObjectIdentifier(T.self)
+
+            switch injectType {
+            case .singleton:
+                if let value = singletons[key] as? T {
+                    return value
+                }
+
+            case .factory:
+                if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
+
+            case .both:
+                if let value = singletons[key] as? T {
+                    return value
+                } else if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
+            }
+        }
+
+        return nil
+    }
+
+    public func extractThrows<T>(from injectType: InjectingType) throws -> T {
+
+        let key = ObjectIdentifier(T.self)
+
+        return try queue.sync {
+            switch injectType {
+            case .singleton:
+                if let singleton = singletons[key] as? T {
+                    return singleton
+                }
+
+            case .factory:
+                if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
+
+            case .both:
+                if let singleton = singletons[key] as? T {
+                    return singleton
+                }
+                if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
             }
 
-        case .both:
-            if let singleton = state.singletons[ObjectIdentifier(T.self)] as? T {
-                return singleton
-            } else if let factory = state.factories[ObjectIdentifier(T.self)] as? (any Injector) -> T {
-                return factory(self)
-            } else {
-                throw InjectorError.typeNotFound(message: "Error: Unable to extract type as a singleton or factory for an unregistered type: \(T.self)")
-            }
+            throw InjectorError.typeNotFound(message: "Injector: Unable to extract \(T.self) as \(injectType). Make sure it is registered.")
         }
     }
 
-    func extract<T>(from injectType: InjectingType) -> T {
-        switch injectType {
-        case .singleton:
-            if let singleton = state.singletons[ObjectIdentifier(T.self)] as? T {
-                return singleton
-            } else {
-                fatalError("Error: Unable to extract type as a singleton for an unregistered type: \(T.self)")
+    public func extract<T>(from injectType: InjectingType) -> T {
+
+        let key = ObjectIdentifier(T.self)
+
+        return queue.sync {
+            switch injectType {
+            case .singleton:
+                if let instance = singletons[key] as? T {
+                    return instance
+                }
+
+            case .factory:
+                if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
+
+            case .both:
+                if let instance = singletons[key] as? T {
+                    return instance
+                }
+                if let factory = factories[key] as? (any Injector) -> T {
+                    return factory(self)
+                }
             }
 
-        case .factory:
-            if let factory = state.factories[ObjectIdentifier(T.self)] as? (any Injector) -> T {
-                return factory(self)
-            } else {
-                fatalError("Error: Unable to extract type as a factory for an unregistered type: \(T.self)")
-            }
-
-        case .both:
-            if let singleton = state.singletons[ObjectIdentifier(T.self)] as? T {
-                return singleton
-            } else if let factory = state.factories[ObjectIdentifier(T.self)] as? (any Injector) -> T {
-                return factory(self)
-            } else {
-                fatalError("Error: Unable to extract type as a singleton or factory for an unregistered type: \(T.self)")
-            }
+            preconditionFailure("Injector: Unable to extract type \(T.self) as \(injectType). Make sure it's registered.")
         }
     }
 }

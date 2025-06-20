@@ -25,6 +25,10 @@ public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
     associatedtype A: ActionProtocol
 
+    /// Publisher for State
+    var statePublisher: Published<S>.Publisher { get }
+
+    /// Cancellable Bag
     var bag: CancellableBag { get }
 
     /**
@@ -42,6 +46,7 @@ public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where 
 
 }
 
+
 // Extend the Never type to conform to both AsyncActionProtocol and SyncActionProtocol
 // This allows Never to be used in contexts where these protocols are expected, but it won't actually perform any actions.
 extension Never: AsyncActionProtocol, SyncActionProtocol {
@@ -49,7 +54,7 @@ extension Never: AsyncActionProtocol, SyncActionProtocol {
     // The initializer returns nil because Never cannot be initialized from any ActionProtocol
     // It signifies that there is no meaningful action associated with this type.
     public init?(from original: any ActionProtocol) {
-        return nil
+        nil
     }
 
     // Define a cancelID property, which returns a constant string "never".
@@ -59,6 +64,7 @@ extension Never: AsyncActionProtocol, SyncActionProtocol {
     }
 }
 
+
 // Define a ViewModelProtocol extension with a constraint that the associated action type (A.AA) is Never.
 // This is for async actions that are effectively "no-ops," meaning no actual asynchronous action is triggered.
 public extension ViewModelProtocol where A.AA == Never {
@@ -67,6 +73,7 @@ public extension ViewModelProtocol where A.AA == Never {
     // It's used for situations where no asynchronous action is expected, providing an empty async trigger.
     func triggerAsync(action: Never) async { }
 }
+
 
 // Define a ViewModelProtocol extension where the associated action type (A.SA) is Never.
 // This is for synchronous actions that are also "no-ops" and don't perform any action.

@@ -8,7 +8,7 @@
 import MacroTesting
 import SwiftSyntaxMacros
 import XCTest
-@testable import DufapMacros
+import DufapMacros
 
 final class MacrosTest: XCTestCase {
 
@@ -107,6 +107,8 @@ final class MacrosTest: XCTestCase {
 
         var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.myviewmodel")
 
+        var statePublisher: Published<S>.Publisher { $state }
+
         deinit { 
             bag.cancelAll()
         }
@@ -201,7 +203,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testActionMacro() {
+    func test_ActionMacro() {
         assertMacro {
             myAction
         } expansion: {
@@ -209,7 +211,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testViewModelMacro() {
+    func test_ViewModelMacro() {
         assertMacro {
             myViewModel
         } expansion: {
@@ -217,7 +219,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testPathMacro() {
+    func test_PathMacro() {
         assertMacro {
             pathMacro
         } expansion: {
@@ -225,7 +227,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testViewStateActionMacro() {
+    func test_ViewStateActionMacro() {
         assertMacro {
             viewMacro
         } expansion: {

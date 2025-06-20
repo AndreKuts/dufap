@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@testable import Dufap
+import Dufap
 
 @Action
 enum MockAction {

@@ -5,8 +5,8 @@
 //  Created by Andrew Kuts
 //
 
-
 /// Defines the type of injection for a dependency
+@frozen
 public enum InjectingType {
 
     /// Use an already created singleton object

@@ -7,7 +7,7 @@
 
 import Foundation
 import XCTest
-@testable import Dufap
+import Dufap
 
 @ViewModel(action: MockAction.self)
 class MockViewModel {
@@ -31,8 +31,8 @@ class MockViewModel {
     func triggerAsync(action: MockAction.AA) async {
         switch action {
         case .async(let stringValue):
-            try? await Task.sleep(for: .seconds(1))
             state.text = stringValue
+            try? await Task.sleep(for: .seconds(1))
         }
         asyncExpectation?.fulfill()
     }

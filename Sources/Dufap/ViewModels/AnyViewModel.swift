@@ -10,60 +10,55 @@ import Foundation
 import SwiftUI
 
 /**
- `AnyViewModel` is a type-erased wrapper around any object conforming to the `ViewModelProtocol`.
+ A type-erased, observable view model that wraps any concrete `ViewModelProtocol`
+ and exposes its interface through a unified `ObservableObject` API.
 
- It abstracts over specific ViewModel implementations to provide a consistent interface
- and enables interoperability across modules or views.
+ This view model is generic over:
 
- - Parameters:
-   - `S`: The type representing the state, conforming to `StateProtocol`.
-   - `A`: The type representing the action, conforming to `ActionProtocol`.
+ - `S`: The state type conforming to `StateProtocol`.
+ - `A`: The action type conforming to `ActionProtocol`.
 
- - Conforms to:
-   - `ObservableObject` to support Combine’s view updates.
+ Features:
+ - Dynamic member lookup support for state access.
+ - Transparent forwarding of `objectWillChange` publisher.
+ - Deduplicated state synchronization using Combine.
+ - Trigger forwarding for both sync and async actions.
  */
 @dynamicMemberLookup
 open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
-    /// A closure that returns a publisher to notify about changes to the ViewModel.
-    private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
-
-    /// A closure that returns the current state of the ViewModel.
-    private let wrappedState: () -> S
-
-    /// A closure that triggers an action on the ViewModel.
+    /// A closure that forwards sync actions to the underlying concrete view model.
     private let wrappedTrigger: (A.SA) -> Void
 
-    /// A closure that triggers an action asynchronously  on the ViewModel.
+    /// A closure that forwards async actions to the underlying concrete view model.
     private let wrappedTriggerAsync: (A.AA) async -> Void
 
-    /// Bag for managing cancellation of async tasks or any tasks.
-    private let bag: CancellableBag
+    /// A cancellable bag used for storing Combine subscriptions with identifier support.
+    private var bag: CancellableBag
 
-    /// Publisher to notify views about changes, using Combine's `objectWillChange`.
-    public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
+    /// A publisher that notifies SwiftUI views when changes occur.
+    @Published public private(set) var state: S
 
-    /// Current state of the ViewModel.
-    public var state: S { wrappedState() }
-
-    /**
-     Initializes an `AnyViewModel` with a given concrete ViewModel that conforms to `ViewModelProtocol`.
-
-     - Parameter viewModel: A concrete ViewModel instance conforming to `ViewModelProtocol`.
-
-     - Precondition: `viewModel` must have matching `S` (state) and `A` (action) types.
-     */
+    /// Initializes the type-erased view model by wrapping a concrete `ViewModelProtocol` instance.
+    ///
+    /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
-        self.wrappedObjectWillChange = {
-            viewModel
-                .objectWillChange
-                .receive(on: OperationQueue.main)
-                .eraseToAnyPublisher()
-        }
-        self.wrappedState = { viewModel.state }
+        self.state = viewModel.state
         self.wrappedTrigger = viewModel.trigger
         self.wrappedTriggerAsync = viewModel.triggerAsync
         self.bag = viewModel.bag
+
+        viewModel
+            .statePublisher
+            .receiveOnMainIfNeeded()
+            .sink { [weak self] newState in
+
+                guard let self, self.state != newState else {
+                    return
+                }
+                self.state = newState
+            }
+            .store(in: bag, as: "update_state")
     }
 
     /**
@@ -148,7 +143,20 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
     }
 }
 
+
 extension AnyViewModel: Identifiable where S: Identifiable {
+
     /// The unique identifier for the ViewModel, derived from the state's identifier.
     public var id: S.ID { state.id }
+}
+
+
+extension Publisher {
+
+    /// Schedule receiving update on the main thread if needed
+    func receiveOnMainIfNeeded() -> AnyPublisher<Output, Failure> {
+        Thread.isMainThread
+            ? eraseToAnyPublisher()
+            : receive(on: DispatchQueue.main).eraseToAnyPublisher()
+    }
 }

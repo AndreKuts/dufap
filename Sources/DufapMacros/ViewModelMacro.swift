@@ -90,6 +90,8 @@ extension ViewModelMacro: MemberMacro {
 
             var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.\(raw: declaration.as(ClassDeclSyntax.self)?.name.text.lowercased() ?? "unknown_object")")
 
+            var statePublisher: Published<S>.Publisher { $state }
+
             \(raw: deinitDecl)
             """
         ]

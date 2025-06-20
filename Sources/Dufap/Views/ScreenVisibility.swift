@@ -11,7 +11,8 @@
 ///
 /// - T: The associated view model or state.
 @Pathable
-@frozen public enum ScreenVisibility<T> {
+@frozen
+public enum ScreenVisibility<T> {
 
     /// Indicates that the screen should be shown, with the type.
     case show(T)

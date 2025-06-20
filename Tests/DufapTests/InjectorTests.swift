@@ -6,12 +6,7 @@
 //
 
 import XCTest
-@testable import Dufap
-
-class TestInjector: Injector {
-    let updateStateQueue: DispatchQueue = .init(label: "dufap.test.injector.queue")
-    var state: InjectorState = .init()
-}
+import Dufap
 
 struct TestService: Equatable {
     let id: UUID
@@ -19,11 +14,11 @@ struct TestService: Equatable {
 
 class InjectorTests: XCTestCase {
 
-    var injector: TestInjector!
+    var injector: (any Injector)!
 
     override func setUp() {
         super.setUp()
-        injector = TestInjector()
+        injector = DependencyInjector()
     }
 
     override func tearDown() {
@@ -31,7 +26,7 @@ class InjectorTests: XCTestCase {
         super.tearDown()
     }
 
-    func testExtractReturnsSameInstance() {
+    func test_ExtractReturnsSameInstance() {
 
         let service = TestService(id: .init())
         injector.inject(for: .singleton) { _ in service }
@@ -40,16 +35,17 @@ class InjectorTests: XCTestCase {
         XCTAssertEqual(extracted, service, "Singleton extract should return the same instance that was injected")
     }
 
-    func testExtractReturnsNewInstanceEachTime() {
+    func test_ExtractReturnsNewInstanceEachTime() {
 
         injector.inject(for: .factory) { _ in TestService(id: .init()) }
 
         let a: TestService = injector.extract(from: .factory)
         let b: TestService = injector.extract(from: .factory)
+
         XCTAssertNotEqual(a, b, "Factory extract should return a new instance on each call")
     }
 
-    func testExtractSingletonThenFactory() {
+    func test_ExtractSingletonThenFactory() {
 
         let uuid = UUID()
         injector.inject(for: .both) { _ in TestService(id: uuid) }
@@ -61,7 +57,7 @@ class InjectorTests: XCTestCase {
         XCTAssertEqual(factory.id, uuid, "Factory ID should match injected UUID")
     }
 
-    func testRemovesOnlySingleton() {
+    func test_RemovesOnlySingleton() {
 
         injector.inject(for: .both) { _ in TestService(id: .init()) }
         injector.eject(type: TestService.self, from: .singleton)
@@ -77,7 +73,7 @@ class InjectorTests: XCTestCase {
         )
     }
 
-    func testRemovesOnlyFactory() {
+    func test_RemovesOnlyFactory() {
 
         injector.inject(for: .both) { _ in TestService(id: .init()) }
         injector.eject(type: TestService.self, from: .factory)
@@ -93,7 +89,7 @@ class InjectorTests: XCTestCase {
         )
     }
 
-    func testRemovesBoth() {
+    func test_RemovesBoth() {
 
         injector.inject(for: .both) { _ in TestService(id: .init()) }
         injector.eject(type: TestService.self, from: .both)
@@ -109,7 +105,7 @@ class InjectorTests: XCTestCase {
         )
     }
 
-    func testMissingSingletonThrowsError() {
+    func test_MissingSingletonThrowsError() {
 
         XCTAssertThrowsError(
             try injector.extractThrows(from: .singleton) as TestService,
@@ -119,7 +115,7 @@ class InjectorTests: XCTestCase {
         }
     }
 
-    func testMissingFactoryThrowsError() {
+    func test_MissingFactoryThrowsError() {
 
         XCTAssertThrowsError(
             try injector.extractThrows(from: .factory) as TestService,
@@ -129,7 +125,7 @@ class InjectorTests: XCTestCase {
         }
     }
 
-    func testMissingBothThrowsError() {
+    func test_MissingBothThrowsError() {
 
         XCTAssertThrowsError(
             try injector.extractThrows(from: .both) as TestService,
@@ -139,7 +135,7 @@ class InjectorTests: XCTestCase {
         }
     }
 
-    func testGetBothByDefault() {
+    func test_GetBothByDefault() {
 
         injector.inject(for: .both) { _ in TestService(id: .init()) }
 

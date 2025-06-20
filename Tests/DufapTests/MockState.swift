@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@testable import Dufap
+import Dufap
 
 struct MockState: StateProtocol, Identifiable {
     var id: UUID = UUID()

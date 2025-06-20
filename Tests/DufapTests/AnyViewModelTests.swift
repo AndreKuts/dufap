@@ -7,13 +7,13 @@
 
 import XCTest
 import Combine
-@testable import Dufap
+import Dufap
 
 class AnyViewModelTests: XCTestCase {
 
     let state = MockState(value: 10, text: "Ten")
 
-    func testViewModelStateAccess() {
+    func test_ViewModelStateAccess() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))
 
@@ -22,22 +22,26 @@ class AnyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.id, state.id, "Expected id to match state.id, but got \(viewModel.id) instead of \(state.id)")
     }
 
-    func testAsyncAction() {
+    func test_AsyncAction() {
 
         let exp = self.expectation(description: "Async Action triggered")
-        let viewModel = AnyViewModel(MockViewModel(state: state, expect: exp))
+        let vm = MockViewModel(state: state, expect: exp)
+        let viewModel = AnyViewModel(vm)
+        let newValue = "New Async Value"
 
-        viewModel.trigger(action: .async("New Async Value"))
-        waitForExpectations(timeout: 1.5)
+        viewModel.trigger(action: .async(newValue))
 
-        XCTAssertEqual(viewModel.text, "New Async Value", "Expected text to update after async action, but got '\(viewModel.text)' instead")
+        waitForExpectations(timeout: 2)
+
+        XCTAssertEqual(viewModel.text, newValue, "Expected text to update after async action, but got '\(viewModel.text)' instead")
     }
 
-    func testSyncAction() {
+    func test_SyncAction() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))
 
         viewModel.trigger(action: .sync(1))
+
         XCTAssertEqual(viewModel.value, 1)
     }
 }
