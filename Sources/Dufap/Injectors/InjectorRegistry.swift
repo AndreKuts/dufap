@@ -8,7 +8,6 @@
 import Foundation
 
 /// A global registry for holding references to `Injector` and `AsyncInjector` instances.
-/// It uses thread-safe access via `NSLock`.
 public enum InjectorRegistry {
 
     private static var injector: (any Injector)?

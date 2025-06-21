@@ -31,8 +31,8 @@ class MockViewModel {
     func triggerAsync(action: MockAction.AA) async {
         switch action {
         case .async(let stringValue):
-            state.text = stringValue
             try? await Task.sleep(for: .seconds(1))
+            state.text = stringValue
         }
         asyncExpectation?.fulfill()
     }

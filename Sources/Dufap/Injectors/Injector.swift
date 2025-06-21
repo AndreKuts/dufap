@@ -55,12 +55,10 @@ public protocol Injector {
     func extractThrows<T>(from injectType: InjectingType) throws -> T
 
     /**
-     Extracts a dependency from the injector's state, throwing an error if it does not exist.
+     Extracts a dependency from the injector's state
 
      - Parameters:
         - injectType: The type of injection (`singleton`, `factory`, or `both`).
-
-     - Throws: `InjectorError.typeNotFound` if the dependency is not registered.
 
      - Returns: The extracted dependency of type `T?`.
      */
