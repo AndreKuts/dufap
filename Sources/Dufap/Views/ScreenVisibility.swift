@@ -10,9 +10,25 @@
 /// Useful for controlling animated transitions or conditional presentation in SwiftUI.
 ///
 /// - T: The associated view model or state.
-@Pathable
 @frozen
-public enum ScreenVisibility<T> {
+public enum ScreenVisibility<T>: Hashable, Equatable, Identifiable {
+
+    public static func == (lhs: ScreenVisibility<T>, rhs: ScreenVisibility<T>) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    public var id: Int {
+        switch self {
+        case .show:
+            return 0
+        case .hide:
+            return 1
+        }
+    }
 
     /// Indicates that the screen should be shown, with the type.
     case show(T)
