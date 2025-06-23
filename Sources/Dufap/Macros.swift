@@ -2,7 +2,7 @@
 // https://docs.swift.org/swift-book
 
 /**
- `ViewWith` is a macro that generates a SwiftUI view that conforms to the `ViewProtocol`.
+ `ViewWith` is a macro that generates a SwiftUI view that conforms to the ``ViewProtocol``.
  It automatically injects a `ViewModel` and establishes the necessary bindings between the view and its state and actions.
 
  - Usage:
@@ -34,11 +34,11 @@
     The `ViewWith` macro generates a conforming SwiftUI view struct that integrates with a `ViewModel` managing the specified state and actions.
 
  - Requirements:
-    - The `state` type must conform to `StateProtocol`.
-    - The `action` type must conform to `ActionProtocol`.
+    - The `state` type must conform to ``StateProtocol``.
+    - The `action` type must conform to ``ActionProtocol``.
 
  - Limitations:
-    - The macro assumes that the `ViewModel` used conforms to the `ViewModelProtocol` with appropriate state and action types.
+    - The macro assumes that the `ViewModel` used conforms to the ``ViewModelProtocol`` with appropriate state and action types.
     - May not support complex nested views or custom view hierarchies without further customization.
 
  - Supported Types:
@@ -50,7 +50,7 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
 
 
 /**
- `ViewModel` is a macro that generates a ViewModel that conforms to the `ViewModelProtocol`.
+ `ViewModel` is a macro that generates a ViewModel that conforms to the ``ViewModelProtocol``.
  It automatically synthesizes the necessary state management and action handling logic.
 
  - Usage:
@@ -66,11 +66,11 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
     ```
 
  - How it Works:
-    The `ViewModel` macro generates a ViewModel with an `updateStateQueue` for managing state updates in a thread-safe manner. It ensures that the ViewModel automatically conforms to `ProtectedStateHolder` and `ObservableObject`.
+    The `ViewModel` macro generates a ViewModel with an `updateStateQueue` for managing state updates in a thread-safe manner. It ensures that the ViewModel automatically conforms to ``ProtectedStateHolder`` and `ObservableObject`.
 
  - Requirements:
-    - The generated ViewModel must have a state conforming to `StateProtocol`.
-    - The actions must conform to `ActionProtocol`.
+    - The generated ViewModel must have a state conforming to ``StateProtocol``.
+    - The actions must conform to ``ActionProtocol``.
 
  - Supported Types:
     Any class or struct intended to serve as a ViewModel within an MVVM architecture, where state and action types conform to their respective protocols.
@@ -82,11 +82,11 @@ public macro ViewModel<A: ActionProtocol>(action: A.Type) = #externalMacro(modul
 
 
 /**
- `@Action` is a custom macro that transforms an enum into a set of actions conforming to `ActionProtocol`.
+ `@Action` is a custom macro that transforms an enum into a set of actions conforming to ``ActionProtocol``.
 
  This macro:
- - Adds protocol conformance to `ActionProtocol`
- - Injects new members (e.g., derived `SyncAction` or `AsyncAction` enums)
+ - Adds protocol conformance to ``ActionProtocol``
+ - Injects new members (e.g., derived ``SyncAction`` or ``AsyncAction`` enums)
  - Helps with unidirectional data flow by modelling actions
 
  Internally, it uses annotations such as `triggerMode` to determine whether to generate synchronous or asynchronous variants.

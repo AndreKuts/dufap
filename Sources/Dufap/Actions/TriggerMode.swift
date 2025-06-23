@@ -13,6 +13,6 @@ public enum TriggerMode {
     /// Action is triggered synchronously on the main thread.
     case sync
 
-    /// Action is triggered asynchronously, using `Task`.
+    /// Action is triggered asynchronously, using `Task { ... }`.
     case async
 }

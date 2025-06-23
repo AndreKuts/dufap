@@ -9,8 +9,6 @@ import Foundation
 
 /**
  The `Injector` protocol defines the interface for dependency injection.
- It extends the `ObservableObject` protocol, allowing this object to be used as an environment object.
- Additionally, it extends the `ProtectedStateHolder` protocol and provides methods to inject and extract dependencies safety..
  */
 public protocol Injector {
 
@@ -109,17 +107,16 @@ public final class DependencyInjector: Injector {
 
         let key = ObjectIdentifier(T.self)
 
-        queue.sync(flags: .barrier) { [weak self] in
+        queue.sync(flags: .barrier) {
 
-            guard let self else { return }
             switch injectType {
             case .singleton:
-                self.singletons.removeValue(forKey: key)
+                singletons.removeValue(forKey: key)
             case .factory:
-                self.factories.removeValue(forKey: key)
+                factories.removeValue(forKey: key)
             case .both:
-                self.singletons.removeValue(forKey: key)
-                self.factories.removeValue(forKey: key)
+                singletons.removeValue(forKey: key)
+                factories.removeValue(forKey: key)
             }
         }
     }

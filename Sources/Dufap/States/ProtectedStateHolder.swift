@@ -12,15 +12,15 @@ import Foundation
  It provides a mechanism to ensure safe, synchronized access and updates to the state using a `DispatchQueue`.
 
  - Requirements:
-    - A `State` conforming to `StateProtocol`.
+    - A `State` conforming to ``StateProtocol``.
     - An `updateStateQueue` for managing synchronous state updates.
  */
 public protocol ProtectedStateHolder: AnyObject {
 
-    /// The type of state managed by the object, conforming to `StateProtocol`.
+    /// The type of state managed by the object, conforming to ``StateProtocol``.
     associatedtype S: StateProtocol
 
-    /// The state instance being managed, conforming to the `StateProtocol`.
+    /// The state instance being managed, conforming to the ``StateProtocol``.
     var state: S { get set }
 
     /// A queue used to ensure that state updates are synchronized and thread-safe.

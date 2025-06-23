@@ -9,11 +9,11 @@ import Combine
 
 /**
  `ViewModelProtocol` defines the base structure for a ViewModel in the MVVM architecture.
- It inherits from `ProtectedStateHolder` to manage the state and `ObservableObject` to allow views to observe state changes.
+ It inherits from ``ProtectedStateHolder`` to manage the state and `ObservableObject` to allow views to observe state changes.
  
  - Requirements:
-    - A `S` state type conforming to `StateProtocol`, inherited from `ProtectedStateHolder`.
-    - An `A` action type conforming to `ActionProtocol`, representing actions or events that can trigger changes in state.
+    - A `S` state type conforming to ``StateProtocol``, inherited from ``ProtectedStateHolder``.
+    - An `A` action type conforming to ``ActionProtocol``, representing actions or events that can trigger changes in state.
     - A method to trigger actions that modify the ViewModel's state.
  
  - Inherits:

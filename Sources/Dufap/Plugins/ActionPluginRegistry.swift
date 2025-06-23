@@ -11,7 +11,7 @@ import Foundation
 /**
  `ActionPlugin` is a protocol for observing the lifecycle of actions.
 
- Implementers can hook into the triggering process to log, monitor, or modify behavior.
+ Implementers can hook into the triggering process to log, monitor, or modify behaviour.
  */
 public protocol ActionPlugin {
 
@@ -30,7 +30,7 @@ public protocol ActionPlugin {
 
 
 /**
- `ActionPluginRegistry` is a global, thread-safe container for registering and notifying `ActionPlugin`s.
+ `ActionPluginRegistry` is a global, thread-safe container for registering and notifying ``ActionPlugin``'s.
 
  It enables cross-cutting concerns like logging, metrics, and debugging
  to be applied to all actions without modifying core logic.
@@ -51,11 +51,11 @@ public final class ActionPluginRegistry {
     /**
      Attaches a new plugin to the registry.
 
-     - Parameter plugin: A plugin conforming to `ActionPlugin`.
+     - Parameter plugin: A plugin conforming to ``ActionPlugin``.
      */
     public func attach<M: ActionPlugin>(_ plugin: M) {
-        queue.async(flags: .barrier) { [weak self] in
-            self?.storage.append(plugin)
+        queue.sync(flags: .barrier) {
+            storage.append(plugin)
         }
     }
 

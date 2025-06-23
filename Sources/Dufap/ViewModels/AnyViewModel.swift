@@ -15,8 +15,8 @@ import SwiftUI
 
  This view model is generic over:
 
- - `S`: The state type conforming to `StateProtocol`.
- - `A`: The action type conforming to `ActionProtocol`.
+ - `S`: The state type conforming to ``StateProtocol``.
+ - `A`: The action type conforming to ``ActionProtocol``.
 
  Features:
  - Dynamic member lookup support for state access.
@@ -39,7 +39,7 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
     /// A publisher that notifies SwiftUI views when changes occur.
     @Published public private(set) var state: S
 
-    /// Initializes the type-erased view model by wrapping a concrete `ViewModelProtocol` instance.
+    /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
     ///
     /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
@@ -64,7 +64,7 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
     /**
      Triggers the given action on the underlying ViewModel.
 
-     This method first notifies the `ActionPluginRegistry` that an action is about to be triggered.
+     This method first notifies the ``ActionPluginRegistry`` that an action is about to be triggered.
      It attempts to convert the provided action into a synchronous or asynchronous variant.
      Depending on the result, it invokes the appropriate trigger method and notifies the registry after completion.
 

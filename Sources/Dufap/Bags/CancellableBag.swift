@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 /// A thread-safe cancellation container that manages cancellable resources by ID.
-/// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom `CancellableTask`, and others.
+/// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom ``CancellableTask``, and others.
 public final class CancellableBag {
 
     /// Internal dictionary holding cancellable items keyed by a unique identifier.
@@ -76,7 +76,7 @@ public final class CancellableBag {
     }
 }
 
-/// A wrapper around `Task` to allow manual cancellation and storage in a `CancellableBag`.
+/// A wrapper around `Task` to allow manual cancellation and storage in a ``CancellableBag``.
 public final class CancellableTask {
 
     /// The underlying task to be managed.
@@ -86,7 +86,7 @@ public final class CancellableTask {
      Creates and starts a cancellable task.
 
      - Parameter operation: The async operation to run.
-     - Returns: A `CancellableTask` instance that can be stored or cancelled.
+     - Returns: A ``CancellableTask`` instance that can be stored or cancelled.
      */
     public static func run(_ operation: @escaping @Sendable () async -> Void) -> CancellableTask {
         return CancellableTask(Task {
@@ -105,29 +105,37 @@ public final class CancellableTask {
     }
 }
 
-/// Stores a `Task` in the provided `CancellableBag` using the given identifier.
+
 public extension Task where Success == Void, Failure == Never {
+
+    /// Stores a `Task` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, CancellableTask(self))
     }
 }
 
-/// Stores an `AnyCancellable` in the provided `CancellableBag` using the given identifier.
+
 public extension AnyCancellable {
+
+    /// Stores an `AnyCancellable` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }
 }
 
-/// Stores an `NSKeyValueObservation` in the provided `CancellableBag` using the given identifier.
+
 public extension NSKeyValueObservation {
+
+    /// Stores an `NSKeyValueObservation` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }
 }
 
-/// Stores an `NSObjectProtocol` (typically a Notification observer) in the `CancellableBag` using the given identifier.
+
 public extension NSObjectProtocol {
+
+    /// Stores an `NSObjectProtocol` (typically a Notification observer) in the ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }

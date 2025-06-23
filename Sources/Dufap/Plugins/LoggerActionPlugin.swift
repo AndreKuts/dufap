@@ -7,7 +7,7 @@
 
 
 /**
- `LoggerActionPlugin` is a default implementation of `ActionPlugin` that logs action activity to the console.
+ `LoggerActionPlugin` is a default implementation of ``ActionPlugin`` that logs action activity to the console.
 
  It can be useful during development and debugging to trace action flow.
  */
