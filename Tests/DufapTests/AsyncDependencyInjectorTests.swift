@@ -8,7 +8,7 @@
 import XCTest
 import Dufap
 
-final class AsyncDependencyInjectorTests: XCTestCase {
+class AsyncDependencyInjectorTests: XCTestCase {
 
     struct TestService: Equatable {
         let id: Int

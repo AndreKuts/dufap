@@ -10,7 +10,7 @@ import XCTest
 
 fileprivate struct MockService: Equatable { }
 
-final class InjectedPropertyWrapperTests: XCTestCase {
+class InjectedPropertyWrapperTests: XCTestCase {
 
     func test_InjectedResolvesValue() {
 

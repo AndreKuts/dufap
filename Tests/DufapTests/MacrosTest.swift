@@ -10,7 +10,7 @@ import SwiftSyntaxMacros
 import XCTest
 import DufapMacros
 
-final class MacrosTest: XCTestCase {
+class MacrosTest: XCTestCase {
 
     private let myAction: String = """
     @Action

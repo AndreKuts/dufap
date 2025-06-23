@@ -8,7 +8,7 @@
 import XCTest
 import Dufap
 
-final class InjectorRegistryTests: XCTestCase {
+class InjectorRegistryTests: XCTestCase {
 
     func test_RegisterAndResolveInjector() {
 
