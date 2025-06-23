@@ -25,7 +25,7 @@ import SwiftUI
  - Trigger forwarding for both sync and async actions.
  */
 @dynamicMemberLookup
-open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
+class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
     /// A closure that forwards sync actions to the underlying concrete view model.
     private let wrappedTrigger: (A.SA) -> Void

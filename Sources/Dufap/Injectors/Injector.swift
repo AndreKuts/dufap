@@ -77,7 +77,7 @@ public extension Injector {
 }
 
 
-public class DependencyInjector: Injector {
+open class DependencyInjector: Injector {
 
     private let queue = DispatchQueue(label: "com.dufap.dependencies.injector", attributes: .concurrent)
     private var singletons: [ObjectIdentifier: Any] = [:]

@@ -10,7 +10,7 @@ import Foundation
 
 /// A thread-safe cancellation container that manages cancellable resources by ID.
 /// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom ``CancellableTask``, and others.
-public class CancellableBag {
+open class CancellableBag {
 
     /// Internal dictionary holding cancellable items keyed by a unique identifier.
     private var bag: [AnyHashable: Any] = [:]
