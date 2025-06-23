@@ -108,10 +108,6 @@ class MacrosTest: XCTestCase {
         var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.myviewmodel")
 
         var statePublisher: Published<S>.Publisher { $state }
-
-        deinit { 
-            bag.cancelAll()
-        }
     }
 
     extension MyViewModel: ViewModelProtocol {
