@@ -30,7 +30,7 @@ public struct Injected<T> {
             }
 
             guard let injector = InjectorRegistry.resolve() else {
-                fatalError("Injector not registered in InjectorRegistry")
+                fatalError("Injector not registered dependency of type \(T.self) using \(injectType) in InjectorRegistry")
             }
 
             // Handling for optional types
