@@ -50,6 +50,7 @@ public extension ViewProtocol {
      - Note:
         This allows views to be initialized directly with a `ViewModelProtocol`-conforming ViewModel, which is then wrapped into an `AnyViewModel` for type erasure.
      */
+    @MainActor
     init<V: ViewModelProtocol>(viewModel: V) where V.A == A, V.S == S {
         self.init(AnyViewModel(viewModel))
     }

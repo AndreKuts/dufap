@@ -42,6 +42,7 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
     /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
     ///
     /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
+    @MainActor
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
         self.state = viewModel.state
         self.wrappedTrigger = viewModel.trigger
@@ -50,9 +51,7 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 
         viewModel
             .statePublisher
-            .receiveOnMainIfNeeded()
             .sink { [weak self] newState in
-
                 guard let self, self.state != newState else {
                     return
                 }
@@ -148,19 +147,8 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 }
 
 
-extension AnyViewModel: Identifiable where S: Identifiable {
+extension AnyViewModel: @preconcurrency Identifiable where S: Identifiable {
 
     /// The unique identifier for the ViewModel, derived from the state's identifier.
     public var id: S.ID { state.id }
-}
-
-
-extension Publisher {
-
-    /// Schedule receiving update on the main thread if needed
-    func receiveOnMainIfNeeded() -> AnyPublisher<Output, Failure> {
-        Thread.isMainThread
-            ? eraseToAnyPublisher()
-            : receive(on: DispatchQueue.main).eraseToAnyPublisher()
-    }
 }
