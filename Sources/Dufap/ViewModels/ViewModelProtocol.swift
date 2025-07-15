@@ -1,29 +1,43 @@
 //
-//  ViewModelProtocol.swift
-//  Dufap
+//  Copyright 2025 Andrew Rew
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import Combine
 
 /**
  `ViewModelProtocol` defines the base structure for a ViewModel in the MVVM architecture.
- It inherits from ``ProtectedStateHolder`` to manage the state and `ObservableObject` to allow views to observe state changes.
+ It inherits from `ObservableObject` to allow views to observe state changes.
  
  - Requirements:
-    - A `S` state type conforming to ``StateProtocol``, inherited from ``ProtectedStateHolder``.
+    - A `S` state type conforming to ``StateProtocol``..
     - An `A` action type conforming to ``ActionProtocol``, representing actions or events that can trigger changes in state.
     - A method to trigger actions that modify the ViewModel's state.
  
  - Inherits:
-    - `ProtectedStateHolder`: Provides thread-safe state management.
     - `ObservableObject`: Enables automatic UI updates when the state changes.
  */
-public protocol ViewModelProtocol: ProtectedStateHolder, ObservableObject where ObjectWillChangePublisher.Output == Void {
+public protocol ViewModelProtocol: ObservableObject where ObjectWillChangePublisher.Output == Void {
 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
     associatedtype A: ActionProtocol
+
+    /// The type of state that represents actual state for module.
+    associatedtype S: StateProtocol
+
+    /// Current state
+    var state: S { get }
 
     /// Publisher for State
     var statePublisher: Published<S>.Publisher { get }

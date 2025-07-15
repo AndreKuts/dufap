@@ -1,8 +1,17 @@
 //
-//  AnyViewModel.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import Combine
@@ -24,16 +33,12 @@ import SwiftUI
  - Deduplicated state synchronization using Combine.
  - Trigger forwarding for both sync and async actions.
  */
+@MainActor
 @dynamicMemberLookup
 public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
-    /// A closure that forwards sync actions to the underlying concrete view model.
     private let wrappedTrigger: (A.SA) -> Void
-
-    /// A closure that forwards async actions to the underlying concrete view model.
     private let wrappedTriggerAsync: (A.AA) async -> Void
-
-    /// A cancellable bag used for storing Combine subscriptions with identifier support.
     private var bag: CancellableBag
 
     /// A publisher that notifies SwiftUI views when changes occur.
@@ -42,7 +47,6 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
     /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
     ///
     /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
-    @MainActor
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
         self.state = viewModel.state
         self.wrappedTrigger = viewModel.trigger
@@ -73,29 +77,30 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 
      - Parameters:
         - action: The action to trigger.
-        - pluginRegistry: The plugin registry used to observe action lifecycle events. Defaults to `ActionPluginRegistry.shared`.
 
      - Note:
         - This method supports dependency injection of `pluginRegistry` to improve testability and avoid repeated access to the shared singleton.
         - If the action cannot be resolved to a known sync or async type, an assertion failure is raised.
      */
-    public func trigger(action: A, pluginRegistry: ActionPluginRegistry = .shared) {
+    public func trigger(action: A) {
 
-        pluginRegistry.willTrigger(action: action)
+        let plugins = ActionPluginRegistry.all()
+        plugins.forEach { $0.willTrigger(action: action) }
 
         if let syncAction = A.SA(from: action) {
             wrappedTrigger(syncAction)
-            pluginRegistry.didTrigger(action: action)
-        } else
+            plugins.forEach { $0.didTrigger(action: action) }
+        }
 
-        if let asyncAction = A.AA(from: action) {
+        else if let asyncAction = A.AA(from: action) {
             Task {
                 await wrappedTriggerAsync(asyncAction)
-                pluginRegistry.didTrigger(action: action)
+                plugins.forEach { $0.didTrigger(action: action) }
             }
             .store(in: bag, as: action.cancelID)
+        }
 
-        } else {
+        else {
             assertionFailure("Unhandled action type: \(action)")
         }
     }
