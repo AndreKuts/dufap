@@ -1,9 +1,19 @@
 //
-//  ActionProtocol.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
 //
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//
+
 
 
 /**
@@ -33,14 +43,14 @@ public protocol ActionProtocol {
 /**
  Protocol that defines how a synchronous action can be initialized from a base action.
 
- Used internally to convert `ActionProtocol` into a more specialized sync form.
+ Used internally to convert ``ActionProtocol`` into a more specialized sync form.
  */
 public protocol SyncActionProtocol {
 
     /**
      Attempts to initialize a synchronous action from a general action.
      
-     - Parameter original: The original action conforming to `ActionProtocol`.
+     - Parameter original: The original action conforming to ``ActionProtocol``.
      - Returns: A sync-specific action or `nil` if the conversion isn't valid.
      */
     init?(from original: any ActionProtocol)
@@ -50,14 +60,14 @@ public protocol SyncActionProtocol {
 /**
  Protocol that defines how an asynchronous action can be initialized from a base action.
 
- Used internally to convert `ActionProtocol` into a more specialized async form.
+ Used internally to convert ``ActionProtocol`` into a more specialized async form.
  */
 public protocol AsyncActionProtocol {
 
     /**
      Attempts to initialize an asynchronous action from a general action.
 
-     - Parameter original: The original action conforming to `ActionProtocol`.
+     - Parameter original: The original action conforming to ``ActionProtocol``.
      - Returns: An async-specific action or `nil` if the conversion isn't valid.
      */
     init?(from original: any ActionProtocol)
@@ -65,8 +75,8 @@ public protocol AsyncActionProtocol {
 
 
 /**
- Provides a default implementation of `triggerMode` for actions,
- assuming synchronous behavior unless otherwise specified.
+ Provides a default implementation of ``triggerMode`` for actions,
+ assuming synchronous behaviour unless otherwise specified.
  */
 public extension ActionProtocol {
     var triggerMode: TriggerMode { .sync }

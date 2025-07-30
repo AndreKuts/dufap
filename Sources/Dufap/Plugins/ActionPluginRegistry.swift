@@ -1,17 +1,25 @@
 //
-//  ActionPluginRegistry.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import Foundation
 
-
 /**
  `ActionPlugin` is a protocol for observing the lifecycle of actions.
 
- Implementers can hook into the triggering process to log, monitor, or modify behavior.
+ Implementers can hook into the triggering process to log, monitor, or modify behaviour.
  */
 public protocol ActionPlugin {
 
@@ -29,59 +37,25 @@ public protocol ActionPlugin {
 }
 
 
-/**
- `ActionPluginRegistry` is a global, thread-safe container for registering and notifying `ActionPlugin`s.
+/// A thread-safe global registry for managing `ActionPlugin` instances.
+public enum ActionPluginRegistry {
 
- It enables cross-cutting concerns like logging, metrics, and debugging
- to be applied to all actions without modifying core logic.
- */
-public final class ActionPluginRegistry {
+    private static var plugins = [ActionPlugin]()
+    private static let queue = DispatchQueue(label: "ActionPluginRegistry.queue", attributes: .concurrent)
 
-    /// Shared singleton instance of the registry.
-    public static let shared = ActionPluginRegistry()
-
-    /// Storage for registered plugins.
-    private var storage: [any ActionPlugin] = []
-
-    /// A concurrent dispatch queue to ensure thread-safe access to plugins.
-    private let queue = DispatchQueue(label: "com.dufap.action_plugin_registry.queue", attributes: .concurrent)
-
-    private init() { }
-
-    /**
-     Attaches a new plugin to the registry.
-
-     - Parameter plugin: A plugin conforming to `ActionPlugin`.
-     */
-    public func attach<M: ActionPlugin>(_ plugin: M) {
-        queue.async(flags: .barrier) { [weak self] in
-            self?.storage.append(plugin)
+    /// Registers a plugin in a thread-safe way.
+    /// - Parameter plugin: The `ActionPlugin` to add to the registry.
+    public static func register(_ plugin: ActionPlugin) {
+        queue.async(flags: .barrier) {
+            plugins.append(plugin)
         }
     }
 
-    /**
-     Notifies all registered plugins that an action is about to be triggered.
-
-     - Parameter action: The action that is about to be triggered.
-     */
-    public func willTrigger(action: any ActionProtocol) {
+    /// Returns a snapshot of all registered plugins.
+    /// - Returns: A thread-safe copy of the plugin array.
+    public static func all() -> [ActionPlugin] {
         queue.sync {
-            for plugin in storage {
-                plugin.willTrigger(action: action)
-            }
-        }
-    }
-
-    /**
-     Notifies all registered plugins that an action has been triggered.
-
-     - Parameter action: The action that was triggered.
-     */
-    func didTrigger(action: any ActionProtocol) {
-        queue.sync {
-            for plugin in storage {
-                plugin.didTrigger(action: action)
-            }
+            plugins
         }
     }
 }

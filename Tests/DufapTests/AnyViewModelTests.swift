@@ -1,19 +1,29 @@
 //
-//  AnyViewModelTests.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import XCTest
 import Combine
-@testable import Dufap
+import Dufap
 
 class AnyViewModelTests: XCTestCase {
 
     let state = MockState(value: 10, text: "Ten")
 
-    func testViewModelStateAccess() {
+    @MainActor
+    func test_ViewModelStateAccess() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))
 
@@ -22,22 +32,28 @@ class AnyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.id, state.id, "Expected id to match state.id, but got \(viewModel.id) instead of \(state.id)")
     }
 
-    func testAsyncAction() {
+    @MainActor
+    func test_AsyncAction() {
 
         let exp = self.expectation(description: "Async Action triggered")
-        let viewModel = AnyViewModel(MockViewModel(state: state, expect: exp))
+        let vm = MockViewModel(state: state, expect: exp)
+        let viewModel = AnyViewModel(vm)
+        let newValue = "New Async Value"
 
-        viewModel.trigger(action: .async("New Async Value"))
-        waitForExpectations(timeout: 1.5)
+        viewModel.trigger(action: .async(newValue))
 
-        XCTAssertEqual(viewModel.text, "New Async Value", "Expected text to update after async action, but got '\(viewModel.text)' instead")
+        waitForExpectations(timeout: 2)
+
+        XCTAssertEqual(viewModel.text, newValue, "Expected text to update after async action, but got '\(viewModel.text)' instead")
     }
 
-    func testSyncAction() {
+    @MainActor
+    func test_SyncAction() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))
 
         viewModel.trigger(action: .sync(1))
+
         XCTAssertEqual(viewModel.value, 1)
     }
 }

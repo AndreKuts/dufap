@@ -1,8 +1,17 @@
 //
-//  AnyViewModel.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import Combine
@@ -10,94 +19,88 @@ import Foundation
 import SwiftUI
 
 /**
- `AnyViewModel` is a type-erased wrapper around any object conforming to the `ViewModelProtocol`.
+ A type-erased, observable view model that wraps any concrete `ViewModelProtocol`
+ and exposes its interface through a unified `ObservableObject` API.
 
- It abstracts over specific ViewModel implementations to provide a consistent interface
- and enables interoperability across modules or views.
+ This view model is generic over:
 
- - Parameters:
-   - `S`: The type representing the state, conforming to `StateProtocol`.
-   - `A`: The type representing the action, conforming to `ActionProtocol`.
+ - `S`: The state type conforming to ``StateProtocol``.
+ - `A`: The action type conforming to ``ActionProtocol``.
 
- - Conforms to:
-   - `ObservableObject` to support Combine’s view updates.
+ Features:
+ - Dynamic member lookup support for state access.
+ - Transparent forwarding of `objectWillChange` publisher.
+ - Deduplicated state synchronization using Combine.
+ - Trigger forwarding for both sync and async actions.
  */
+@MainActor
 @dynamicMemberLookup
-open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
+public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
-    /// A closure that returns a publisher to notify about changes to the ViewModel.
-    private let wrappedObjectWillChange: () -> AnyPublisher<Void, Never>
-
-    /// A closure that returns the current state of the ViewModel.
-    private let wrappedState: () -> S
-
-    /// A closure that triggers an action on the ViewModel.
     private let wrappedTrigger: (A.SA) -> Void
-
-    /// A closure that triggers an action asynchronously  on the ViewModel.
     private let wrappedTriggerAsync: (A.AA) async -> Void
+    private var bag: CancellableBag
 
-    /// Bag for managing cancellation of async tasks or any tasks.
-    private let bag: CancellableBag
+    /// A publisher that notifies SwiftUI views when changes occur.
+    @Published public private(set) var state: S
 
-    /// Publisher to notify views about changes, using Combine's `objectWillChange`.
-    public var objectWillChange: AnyPublisher<Void, Never> { wrappedObjectWillChange() }
-
-    /// Current state of the ViewModel.
-    public var state: S { wrappedState() }
-
-    /**
-     Initializes an `AnyViewModel` with a given concrete ViewModel that conforms to `ViewModelProtocol`.
-
-     - Parameter viewModel: A concrete ViewModel instance conforming to `ViewModelProtocol`.
-
-     - Precondition: `viewModel` must have matching `S` (state) and `A` (action) types.
-     */
+    /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
+    ///
+    /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
-        self.wrappedObjectWillChange = {
-            viewModel
-                .objectWillChange
-                .receive(on: OperationQueue.main)
-                .eraseToAnyPublisher()
-        }
-        self.wrappedState = { viewModel.state }
+        self.state = viewModel.state
         self.wrappedTrigger = viewModel.trigger
         self.wrappedTriggerAsync = viewModel.triggerAsync
         self.bag = viewModel.bag
+
+        viewModel
+            .statePublisher
+            .sink { [weak self] newState in
+                guard let self, self.state != newState else {
+                    return
+                }
+                self.state = newState
+            }
+            .store(in: bag, as: "update_state")
+    }
+
+    deinit {
+        bag.cancelAll()
     }
 
     /**
      Triggers the given action on the underlying ViewModel.
 
-     This method first notifies the `ActionPluginRegistry` that an action is about to be triggered.
+     This method first notifies the ``ActionPluginRegistry`` that an action is about to be triggered.
      It attempts to convert the provided action into a synchronous or asynchronous variant.
      Depending on the result, it invokes the appropriate trigger method and notifies the registry after completion.
 
      - Parameters:
         - action: The action to trigger.
-        - pluginRegistry: The plugin registry used to observe action lifecycle events. Defaults to `ActionPluginRegistry.shared`.
 
      - Note:
         - This method supports dependency injection of `pluginRegistry` to improve testability and avoid repeated access to the shared singleton.
         - If the action cannot be resolved to a known sync or async type, an assertion failure is raised.
      */
-    public func trigger(action: A, pluginRegistry: ActionPluginRegistry = .shared) {
+    public func trigger(action: A) {
 
-        pluginRegistry.willTrigger(action: action)
+        let plugins = ActionPluginRegistry.all()
+        plugins.forEach { $0.willTrigger(action: action) }
 
         if let syncAction = A.SA(from: action) {
             wrappedTrigger(syncAction)
-            pluginRegistry.didTrigger(action: action)
-        } else
+            plugins.forEach { $0.didTrigger(action: action) }
+        }
 
-        if let asyncAction = A.AA(from: action) {
+        else if let asyncAction = A.AA(from: action) {
             Task {
                 await wrappedTriggerAsync(asyncAction)
-                pluginRegistry.didTrigger(action: action)
+                plugins.forEach { $0.didTrigger(action: action) }
             }
             .store(in: bag, as: action.cancelID)
+        }
 
-        } else {
+        else {
             assertionFailure("Unhandled action type: \(action)")
         }
     }
@@ -148,7 +151,9 @@ open class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
     }
 }
 
-extension AnyViewModel: Identifiable where S: Identifiable {
+
+extension AnyViewModel: @preconcurrency Identifiable where S: Identifiable {
+
     /// The unique identifier for the ViewModel, derived from the state's identifier.
     public var id: S.ID { state.id }
 }

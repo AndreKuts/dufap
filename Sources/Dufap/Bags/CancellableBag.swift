@@ -1,21 +1,27 @@
 //
-//  CancellableBag.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import Combine
 import Foundation
 
 /// A thread-safe cancellation container that manages cancellable resources by ID.
-/// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom `CancellableTask`, and others.
-public final class CancellableBag {
+/// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom ``CancellableTask``, and others.
+open class CancellableBag {
 
-    /// Internal dictionary holding cancellable items keyed by a unique identifier.
     private var bag: [AnyHashable: Any] = [:]
-
-    /// A concurrent dispatch queue with barrier synchronization for thread-safe access.
     private let queue = DispatchQueue(label: "com.dufap.cancellable_bag.queue", attributes: .concurrent)
 
     public init() {}
@@ -76,17 +82,16 @@ public final class CancellableBag {
     }
 }
 
-/// A wrapper around `Task` to allow manual cancellation and storage in a `CancellableBag`.
-public final class CancellableTask {
+/// A wrapper around `Task` to allow manual cancellation and storage in a ``CancellableBag``.
+public class CancellableTask {
 
-    /// The underlying task to be managed.
     private var task: Task<Void, Never>?
 
     /**
      Creates and starts a cancellable task.
 
      - Parameter operation: The async operation to run.
-     - Returns: A `CancellableTask` instance that can be stored or cancelled.
+     - Returns: A ``CancellableTask`` instance that can be stored or cancelled.
      */
     public static func run(_ operation: @escaping @Sendable () async -> Void) -> CancellableTask {
         return CancellableTask(Task {
@@ -105,29 +110,37 @@ public final class CancellableTask {
     }
 }
 
-/// Stores a `Task` in the provided `CancellableBag` using the given identifier.
+
 public extension Task where Success == Void, Failure == Never {
+
+    /// Stores a `Task` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, CancellableTask(self))
     }
 }
 
-/// Stores an `AnyCancellable` in the provided `CancellableBag` using the given identifier.
+
 public extension AnyCancellable {
+
+    /// Stores an `AnyCancellable` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }
 }
 
-/// Stores an `NSKeyValueObservation` in the provided `CancellableBag` using the given identifier.
+
 public extension NSKeyValueObservation {
+
+    /// Stores an `NSKeyValueObservation` in the provided ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }
 }
 
-/// Stores an `NSObjectProtocol` (typically a Notification observer) in the `CancellableBag` using the given identifier.
+
 public extension NSObjectProtocol {
+
+    /// Stores an `NSObjectProtocol` (typically a Notification observer) in the ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
         bag.add(id: id, self)
     }

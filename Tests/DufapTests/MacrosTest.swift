@@ -1,16 +1,25 @@
 //
-//  MacrosTest.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import MacroTesting
 import SwiftSyntaxMacros
 import XCTest
-@testable import DufapMacros
+import DufapMacros
 
-final class MacrosTest: XCTestCase {
+class MacrosTest: XCTestCase {
 
     private let myAction: String = """
     @Action
@@ -107,9 +116,7 @@ final class MacrosTest: XCTestCase {
 
         var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.myviewmodel")
 
-        deinit { 
-            bag.cancelAll()
-        }
+        var statePublisher: Published<S>.Publisher { $state }
     }
 
     extension MyViewModel: ViewModelProtocol {
@@ -201,7 +208,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testActionMacro() {
+    func test_ActionMacro() {
         assertMacro {
             myAction
         } expansion: {
@@ -209,7 +216,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testViewModelMacro() {
+    func test_ViewModelMacro() {
         assertMacro {
             myViewModel
         } expansion: {
@@ -217,7 +224,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testPathMacro() {
+    func test_PathMacro() {
         assertMacro {
             pathMacro
         } expansion: {
@@ -225,7 +232,7 @@ final class MacrosTest: XCTestCase {
         }
     }
 
-    func testViewStateActionMacro() {
+    func test_ViewStateActionMacro() {
         assertMacro {
             viewMacro
         } expansion: {

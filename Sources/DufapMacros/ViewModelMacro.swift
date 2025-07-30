@@ -1,8 +1,17 @@
 //
-//  ViewModelMacro.swift
-//  Dufap
+//  Copyright 2025 Andrew Kuts
 //
-//  Created by Andrew Kuts
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
 //
 
 import SwiftCompilerPlugin
@@ -72,16 +81,6 @@ extension ViewModelMacro: MemberMacro {
         let args = declaration.attributes.compactMap { $0.as(AttributeSyntax.self) }.first?.arguments
         let actionType = args?.as(LabeledExprListSyntax.self)?.first?.expression.as(MemberAccessExprSyntax.self)?.base?.as(DeclReferenceExprSyntax.self)?.baseName.text ?? ""
 
-        var deinitDecl = """
-        deinit { 
-            bag.cancelAll()
-        }
-        """
-
-        if let deinitDeclSyntax = declaration.memberBlock.members.compactMap({ $0.decl.as(DeinitializerDeclSyntax.self) }).first, deinitDeclSyntax.deinitKeyword.text == "deinit" {
-            deinitDecl = ""
-        }
-
         return [
             """
             typealias A = \(raw: actionType)
@@ -90,7 +89,7 @@ extension ViewModelMacro: MemberMacro {
 
             var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.\(raw: declaration.as(ClassDeclSyntax.self)?.name.text.lowercased() ?? "unknown_object")")
 
-            \(raw: deinitDecl)
+            var statePublisher: Published<S>.Publisher { $state }
             """
         ]
     }
