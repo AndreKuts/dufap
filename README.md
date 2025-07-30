@@ -11,7 +11,7 @@
 This Xcode package implements the View-Action-State MVVM architectural pattern for iOS applications, designed to streamline and enhance the management of user interactions and state changes within the app. 
 The View-Action-State MVVM pattern introduces a clear separation between the view's actions and its state, providing a more structured approach to handling user interactions and updating the UI. 
 
-This approach is based on a combination of two patterns: Redux and MVVM.
+This approach combines two patterns: Redux and MVVM.
 
 Inspired by these resources: 
 
@@ -33,8 +33,7 @@ Inspired by these resources:
   - **State**: A structure that encapsulates the state of the View. The ViewModel updates the State based on the actions received and the current state.
   - **ViewModel**: The intermediary between the Model and the View. It processes user actions, interacts with the Model, and updates the State. The ViewModel exposes actions that the View can invoke and publishes state changes.
   - **View**: The user interface layer that displays the data and captures user interactions. The view binds to the ViewModel and updates itself based on the State changes.
-  - **Model**: The data layer of the application, is responsible for managing the data and business logic. It handles data retrieval, persistence, and any other data-related operations.
-  - **Injector** Object that defines methods for injecting and extracting dependencies
+  - **Model**: The data layer of the application is responsible for managing the data and business logic. It handles data retrieval, persistence, and any other data-related operations.
 
 ## Benefits of View-Action-State MVVM
   - Clear Separation of Concerns: By isolating actions and state, this pattern ensures a clean separation between user interactions and UI state, enhancing modularity and maintainability.
@@ -44,10 +43,10 @@ Inspired by these resources:
 
 ## Features
 
-- State updates should only occur in the ViewModel layer as the View layer only has visibility for reading State.
+- State updates should only occur in the ViewModel layer, as the View layer only has visibility for reading State.
 - Receiving state changes occurs on the Main thread by default, so it's safe to update from any thread.
 - Macros are useful for reducing the number of lines of code.
-- Protected state the updates.
+- Protected state updates.
 
 ## Macros
 - @ViewWith: Use this macro to create a SwiftUI view that integrates with your ViewModel
@@ -123,69 +122,32 @@ class ContentViewModel {
 
     // 7. define a state
     var state: ContentState
-    var networkerService: NetworkService
 
     // 8. Add dependencies and states using the classic init method.
-    init(state: ContentState = ContentState(), networkerService: NetworkService) {
+    init(state: ContentState = ContentState()) {
         self.state = state
-        self.networkerService = networkerService
-    }
-
-    // 9. Or add dependencies and states through the Injector.
-    init(injector: any Injector) {
-        self.state = injector.extract(from: .factory)
-        self.networkerService = injector.extract(from: .singleton)
     }
 
     // 10. Define action handler function
     func trigger(action: ContentAction) {
 
-        // 11. handle actions
+        // 11. handle actions and update state
         switch action {
         case .incrementNumber:
-
-            // 12. Update state
-            updateState { $0.number += 1 }
-
-            // This way of simultaneous actions from different threads can lead to losing some state value updates.
-            // state.number += 1
+            state.number += 1
 
         case .updateTextField(let newText):
-            updateState { $0.textInput = newText }
+            state.textInput = newText
         }
     }
 }
 
-// 13. Create dependency you need
-struct NetworkService { }
-
-// 14. App usage
+// 12. App usage
 @main
 struct TMPApp: App {
-
-    let injector: any Injector = DependencyInjector()
-
-    init() {
-        injectAllDependencies() 
-    }
-
-    // 15. Add all dependencies anything you need
-    func injectAllDependencies() {
-
-        // Add as type as factory builder
-        injector.inject(asType: .factory) {
-            ContentState()
-        }
-
-        // Add type as singleton
-        injector.inject(asType: .singleton) {
-            NetworkService()
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: ContentViewModel(injector: injector))
+            ContentView(viewModel: ContentViewModel())
         }
     }
 }
