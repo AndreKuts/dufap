@@ -1,0 +1,35 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: Xcode test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run tests with code coverage
+        run: |
+          xcodebuild test \
+            -scheme Dufap \
+            -destination 'platform=macOS' \
+            -enableCodeCoverage YES \
+            | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Extract code coverage report
+        run: |
+          RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -name "*.xcresult" -print0 | xargs -0 ls -t | head -n1)
+          if [ -n "$RESULT_BUNDLE" ]; then
+            xcrun xccov view --report "$RESULT_BUNDLE"
+          else
+            echo "No .xcresult bundle found."
+          fi
