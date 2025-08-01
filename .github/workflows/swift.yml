@@ -17,19 +17,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run tests with code coverage
-        run: |
-          xcodebuild test \
-            -scheme Dufap \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4' \
-            -enableCodeCoverage YES \
-            | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
 
-      - name: Extract code coverage report
+      - name: Show code coverage summary
         run: |
-          RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -name "*.xcresult" -print0 | xargs -0 ls -t | head -n1)
-          if [ -n "$RESULT_BUNDLE" ]; then
-            xcrun xccov view --report "$RESULT_BUNDLE"
-          else
-            echo "No .xcresult bundle found."
-          fi
+          BINARY_PATH=$(swift build --show-bin-path)/DufapPackageTests.xctest/Contents/MacOS/DufapPackageTests
+          PROF_DATA=.build/debug/codecov/default.profdata
+          xcrun llvm-cov report "$BINARY_PATH" --instr-profile="$PROF_DATA"
