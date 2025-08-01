@@ -17,11 +17,5 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run tests with coverage
-        run: swift test --enable-code-coverage
-
       - name: Show code coverage summary
-        run: |
-          BINARY_PATH=$(swift build --show-bin-path)/DufapPackageTests.xctest/Contents/MacOS/DufapPackageTests
-          PROF_DATA=.build/debug/codecov/default.profdata
-          xcrun llvm-cov report "$BINARY_PATH" --instr-profile="$PROF_DATA"
+        run: swift test 
