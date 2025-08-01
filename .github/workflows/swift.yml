@@ -23,4 +23,6 @@ jobs:
           swift-version: '5.9'
 
       - name: Show code coverage summary
-        run: swift test 
+        run: |
+          export SWIFT_SYNTAX_PARSER_USE_NEW_PARSER=0
+          swift test --parallel
