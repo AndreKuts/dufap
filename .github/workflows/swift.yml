@@ -17,5 +17,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Swift 5.9
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: '5.9'
+
       - name: Show code coverage summary
         run: swift test 
