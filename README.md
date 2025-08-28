@@ -11,7 +11,7 @@
 This Xcode package implements the View-Action-State MVVM architectural pattern for iOS applications, designed to streamline and enhance the management of user interactions and state changes within the app. 
 The View-Action-State MVVM pattern introduces a clear separation between the view's actions and its state, providing a more structured approach to handling user interactions and updating the UI. 
 
-This approach is based on a combination of two patterns: Redux and MVVM.
+This approach combines elements of Redux and MVVM to utilize best practices from both frameworks.
 
 Inspired by these resources: 
 
@@ -34,7 +34,6 @@ Inspired by these resources:
   - **ViewModel**: The intermediary between the Model and the View. It processes user actions, interacts with the Model, and updates the State. The ViewModel exposes actions that the View can invoke and publishes state changes.
   - **View**: The user interface layer that displays the data and captures user interactions. The view binds to the ViewModel and updates itself based on the State changes.
   - **Model**: The data layer of the application, is responsible for managing the data and business logic. It handles data retrieval, persistence, and any other data-related operations.
-  - **Injector** Object that defines methods for injecting and extracting dependencies
 
 ## Benefits of View-Action-State MVVM
   - Clear Separation of Concerns: By isolating actions and state, this pattern ensures a clean separation between user interactions and UI state, enhancing modularity and maintainability.
@@ -52,6 +51,8 @@ Inspired by these resources:
 ## Macros
 - @ViewWith: Use this macro to create a SwiftUI view that integrates with your ViewModel
 - @ViewModel: Use this macro to create a ViewModel that adheres to the ViewModelProtocol.
+- @Action: Use this macro to create an action for ViewModel
+- Pathable: Automatically generates a Hashable, Equatable, and Identifiable extension giving each case a numeric index and using it for equality, hashing, and the id property to make it good to be used in NavigationPath
 
 ## Installation
 
@@ -59,7 +60,7 @@ To integrate Dufap into your Swift project, you can use the Swift Package Manage
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/AndreKuts/dufap.git", from: "1.3.0")
+    .package(url: "https://github.com/AndreKuts/dufap.git", from: "2.0.2")
 ]
 ```
 
@@ -77,7 +78,8 @@ struct ContentState: StateProtocol {
 }
 
 // 3. Define Actions
-enum ContentAction: ActionProtocol {
+@Action
+enum ContentAction {
     case incrementNumber
     case updateTextField(String)
 }
@@ -123,69 +125,33 @@ class ContentViewModel {
 
     // 7. define a state
     var state: ContentState
-    var networkerService: NetworkService
 
     // 8. Add dependencies and states using the classic init method.
-    init(state: ContentState = ContentState(), networkerService: NetworkService) {
+    init(state: ContentState = ContentState()) {
         self.state = state
-        self.networkerService = networkerService
     }
 
-    // 9. Or add dependencies and states through the Injector.
-    init(injector: any Injector) {
-        self.state = injector.extract(from: .factory)
-        self.networkerService = injector.extract(from: .singleton)
-    }
+    // 9. Define action handler function
+    func trigger(action: ContentAction.SyncAction) {
 
-    // 10. Define action handler function
-    func trigger(action: ContentAction) {
-
-        // 11. handle actions
+        // 10. handle actions
         switch action {
+
         case .incrementNumber:
-
-            // 12. Update state
-            updateState { $0.number += 1 }
-
-            // This way of simultaneous actions from different threads can lead to losing some state value updates.
-            // state.number += 1
+            state..number += 1
 
         case .updateTextField(let newText):
-            updateState { $0.textInput = newText }
+            state.textInput = newText
         }
     }
 }
 
-// 13. Create dependency you need
-struct NetworkService { }
-
-// 14. App usage
+// 11. App usage
 @main
 struct TMPApp: App {
-
-    let injector: any Injector = DependencyInjector()
-
-    init() {
-        injectAllDependencies() 
-    }
-
-    // 15. Add all dependencies anything you need
-    func injectAllDependencies() {
-
-        // Add as type as factory builder
-        injector.inject(asType: .factory) {
-            ContentState()
-        }
-
-        // Add type as singleton
-        injector.inject(asType: .singleton) {
-            NetworkService()
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: ContentViewModel(injector: injector))
+            ContentView(viewModel: ContentViewModel())
         }
     }
 }
