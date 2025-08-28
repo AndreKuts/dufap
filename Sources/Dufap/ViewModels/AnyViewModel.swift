@@ -132,21 +132,34 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
     }
 
     /**
-     Creates a two-way SwiftUI Binding to a value in the current state,
+     Creates a two-way SwiftUI `Binding` to a value in the current state,
      and triggers an action whenever the value is updated via the UI.
 
-     This enables editable views (e.g. TextField, Toggle) to remain declarative
-     while maintaining unidirectional data flow through action dispatching.
+     This allows editable SwiftUI views (e.g., `TextField`, `SecureField`, `Toggle`)
+     to remain declarative while maintaining unidirectional data flow
+     through action dispatching.
+
+     The `Value` type must conform to `Equatable` to prevent duplicate actions
+     when the UI sets the same value multiple times (common in `TextField`/`SecureField`).
 
      - Parameters:
         - keyPath: A writable key path to a value within the state.
         - onChange: A closure that produces an action to trigger when the value changes.
-     - Returns: A SwiftUI Binding that reads from state and triggers actions on user updates.
+     - Returns: A SwiftUI `Binding` that reads from state and triggers actions
+                on user updates, while avoiding duplicate actions for unchanged values.
      */
-    public func binding<Value>(_ keyPath: WritableKeyPath<S, Value>, onChange: @escaping (Value) -> A) -> Binding<Value> {
+    public func binding<Value: Equatable>(
+        _ keyPath: WritableKeyPath<S, Value>,
+        onChange: @escaping (Value) -> A
+    ) -> Binding<Value> {
         Binding(
             get: { self.state[keyPath: keyPath] },
-            set: { self.trigger(action: onChange($0)) }
+            set: { newValue in
+                // Only trigger action if the new value differs from current state
+                if self.state[keyPath: keyPath] != newValue {
+                    self.trigger(action: onChange(newValue))
+                }
+            }
         )
     }
 }

@@ -11,7 +11,7 @@
 This Xcode package implements the View-Action-State MVVM architectural pattern for iOS applications, designed to streamline and enhance the management of user interactions and state changes within the app. 
 The View-Action-State MVVM pattern introduces a clear separation between the view's actions and its state, providing a more structured approach to handling user interactions and updating the UI. 
 
-This approach is based on a combination of two patterns: Redux and MVVM.
+This approach combines elements of Redux and MVVM to utilize best practices from both frameworks.
 
 Inspired by these resources: 
 
@@ -34,7 +34,6 @@ Inspired by these resources:
   - **ViewModel**: The intermediary between the Model and the View. It processes user actions, interacts with the Model, and updates the State. The ViewModel exposes actions that the View can invoke and publishes state changes.
   - **View**: The user interface layer that displays the data and captures user interactions. The view binds to the ViewModel and updates itself based on the State changes.
   - **Model**: The data layer of the application, is responsible for managing the data and business logic. It handles data retrieval, persistence, and any other data-related operations.
-  - **Injector** Object that defines methods for injecting and extracting dependencies
 
 ## Benefits of View-Action-State MVVM
   - Clear Separation of Concerns: By isolating actions and state, this pattern ensures a clean separation between user interactions and UI state, enhancing modularity and maintainability.
@@ -59,7 +58,7 @@ To integrate Dufap into your Swift project, you can use the Swift Package Manage
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/AndreKuts/dufap.git", from: "1.3.0")
+    .package(url: "https://github.com/AndreKuts/dufap.git", from: "2.0.1")
 ]
 ```
 
