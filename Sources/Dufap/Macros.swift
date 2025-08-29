@@ -79,7 +79,7 @@ public macro ViewWith<S: StateProtocol, A: ActionProtocol>(state: S.Type, action
     ```
 
  - How it Works:
-    The `ViewModel` macro generates a ViewModel with an `updateStateQueue` for managing state updates in a thread-safe manner. It ensures that the ViewModel automatically conforms to `ObservableObject`.
+    - The `ViewModel` macro generates a ViewModel that automatically conforms to `ObservableObject`.
 
  - Requirements:
     - The generated ViewModel must have a state conforming to ``StateProtocol``.

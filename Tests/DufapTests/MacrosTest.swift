@@ -114,8 +114,6 @@ class MacrosTest: XCTestCase {
 
         var bag: CancellableBag = CancellableBag()
 
-        var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.myviewmodel")
-
         var statePublisher: Published<S>.Publisher { $state }
     }
 

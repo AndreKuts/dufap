@@ -22,7 +22,6 @@ class AnyViewModelTests: XCTestCase {
 
     let state = MockState(value: 10, text: "Ten")
 
-    @MainActor
     func test_ViewModelStateAccess() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))
@@ -32,7 +31,6 @@ class AnyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.id, state.id, "Expected id to match state.id, but got \(viewModel.id) instead of \(state.id)")
     }
 
-    @MainActor
     func test_AsyncAction() {
 
         let exp = self.expectation(description: "Async Action triggered")
@@ -47,7 +45,6 @@ class AnyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.text, newValue, "Expected text to update after async action, but got '\(viewModel.text)' instead")
     }
 
-    @MainActor
     func test_SyncAction() {
 
         let viewModel = AnyViewModel(MockViewModel(state: state))

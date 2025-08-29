@@ -30,7 +30,6 @@ import SwiftSyntaxMacros
  - How it Works:
  The macro performs the following tasks:
  - Generates an extension for the ViewModel type to conform to `ViewModelProtocol`.
- - Creates a member property named `updateStateQueue`, which is a DispatchQueue used for synchronizing state updates.
 
  - Example:
 
@@ -86,8 +85,6 @@ extension ViewModelMacro: MemberMacro {
             typealias A = \(raw: actionType)
 
             var bag: CancellableBag = CancellableBag()
-
-            var updateStateQueue = DispatchQueue(label: "com.dufap.state.update.\(raw: declaration.as(ClassDeclSyntax.self)?.name.text.lowercased() ?? "unknown_object")")
 
             var statePublisher: Published<S>.Publisher { $state }
             """

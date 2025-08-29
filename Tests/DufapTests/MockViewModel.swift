@@ -40,9 +40,10 @@ class MockViewModel {
     func triggerAsync(action: MockAction.AA) async {
         switch action {
         case .async(let stringValue):
-            try? await Task.sleep(for: .seconds(1))
-            state.text = stringValue
+            DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(1)) { [weak self] in
+                self?.state.text = stringValue
+                self?.asyncExpectation?.fulfill()
+            }
         }
-        asyncExpectation?.fulfill()
     }
 }
