@@ -33,7 +33,6 @@ import SwiftUI
  - Deduplicated state synchronization using Combine.
  - Trigger forwarding for both sync and async actions.
  */
-@MainActor
 @dynamicMemberLookup
 public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
@@ -55,6 +54,7 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 
         viewModel
             .statePublisher
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] newState in
                 guard let self, self.state != newState else {
                     return
@@ -165,7 +165,7 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 }
 
 
-extension AnyViewModel: @preconcurrency Identifiable where S: Identifiable {
+extension AnyViewModel: Identifiable where S: Identifiable {
 
     /// The unique identifier for the ViewModel, derived from the state's identifier.
     public var id: S.ID { state.id }
