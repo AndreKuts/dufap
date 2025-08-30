@@ -54,12 +54,10 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 
         viewModel
             .statePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newState in
-                guard let self, self.state != newState else {
-                    return
-                }
-                self.state = newState
+            .dropFirst()
+            .removeDuplicates()
+            .sincOnMain { [weak self] newState in
+                self?.state = newState
             }
             .store(in: bag, as: "update_state")
     }
@@ -169,4 +167,21 @@ extension AnyViewModel: Identifiable where S: Identifiable {
 
     /// The unique identifier for the ViewModel, derived from the state's identifier.
     public var id: S.ID { state.id }
+}
+
+
+extension Publisher where Failure == Never {
+
+    /// Send an action to the main thread if necessary.
+    func sincOnMain(reciveValue: @escaping (Output) -> Void) -> AnyCancellable {
+        sink { value in
+            if Thread.isMainThread {
+                reciveValue(value)
+            } else {
+                DispatchQueue.main.async {
+                    reciveValue(value)
+                }
+            }
+        }
+    }
 }
