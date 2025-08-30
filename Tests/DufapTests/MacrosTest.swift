@@ -14,9 +14,8 @@
 //  limitations under the License.
 //
 
-import MacroTesting
-import SwiftSyntaxMacros
 import XCTest
+import SwiftSyntaxMacrosTestSupport
 import DufapMacros
 
 class MacrosTest: XCTestCase {
@@ -188,53 +187,40 @@ class MacrosTest: XCTestCase {
             self.viewModel = viewModel
         }
     }
-    
+
     extension SomeView: ViewProtocol {
     }
     """
 
-    override func invokeTest() {
-        withMacroTesting(
-            macros: [
-                "Action": ActionMacro.self,
-                "ViewModel": ViewModelMacro.self,
-                "ViewMacro": ViewStateActionMacro.self,
-                "Pathable": PathMacro.self,
-            ]
-        ) {
-            super.invokeTest()
-        }
-    }
-
     func test_ActionMacro() {
-        assertMacro {
-            myAction
-        } expansion: {
-            self.myActionExpansion
-        }
+        assertMacroExpansion(
+            myAction,
+            expandedSource: myActionExpansion,
+            macros: ["Action": ActionMacro.self]
+        )
     }
 
     func test_ViewModelMacro() {
-        assertMacro {
-            myViewModel
-        } expansion: {
-            self.myViewModelExpansion
-        }
+        assertMacroExpansion(
+            myViewModel,
+            expandedSource: myViewModelExpansion,
+            macros: ["ViewModel": ViewModelMacro.self]
+        )
     }
 
     func test_PathMacro() {
-        assertMacro {
-            pathMacro
-        } expansion: {
-            self.pathMacroExpansion
-        }
+        assertMacroExpansion(
+            pathMacro,
+            expandedSource: pathMacroExpansion,
+            macros: ["Pathable": PathMacro.self]
+        )
     }
 
     func test_ViewStateActionMacro() {
-        assertMacro {
-            viewMacro
-        } expansion: {
-            self.viewMacroExpansion
-        }
+        assertMacroExpansion(
+            viewMacro,
+            expandedSource: viewMacroExpansion,
+            macros: ["ViewMacro": ViewStateActionMacro.self]
+        )
     }
 }
