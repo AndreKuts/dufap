@@ -17,8 +17,7 @@ let package = Package(
     ],
 
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax", "510.0.0"..<"601.0.0-prerelease"),
-        .package(url: "https://github.com/pointfreeco/swift-macro-testing", from: "0.2.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax", exact: "510.0.2")
     ],
 
     targets: [
@@ -40,8 +39,7 @@ let package = Package(
             dependencies: [
                 "Dufap",
                 "DufapMacros",
-                .product(name: "MacroTesting", package: "swift-macro-testing"),
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
             ]
         ),
     ]
