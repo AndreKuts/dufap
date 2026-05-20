@@ -23,27 +23,47 @@ class MockViewModel {
 
     var state: MockState
 
+    var syncExpectation: XCTestExpectation?
     var asyncExpectation: XCTestExpectation?
+    var lastSyncMutationWasMainThread = false
+    var syncMutationCount = 0
 
-    init(state: MockState, expect: XCTestExpectation? = nil) {
-        self.asyncExpectation = expect
+    init(state: MockState, syncExpect: XCTestExpectation? = nil, asyncExpect: XCTestExpectation? = nil) {
+        self.syncExpectation = syncExpect
+        self.asyncExpectation = asyncExpect
         self.state = state
     }
 
     func trigger(action: MockAction.SA) {
         switch action {
         case .sync(let intValue):
+            lastSyncMutationWasMainThread = Thread.isMainThread
             state.value = intValue
+            syncMutationCount += 1
+            syncExpectation?.fulfill()
+        case .increment:
+            lastSyncMutationWasMainThread = Thread.isMainThread
+            state.value += 1
+            syncMutationCount += 1
+            syncExpectation?.fulfill()
         }
     }
 
+    @MainActor
     func triggerAsync(action: MockAction.AA) async {
         switch action {
         case .async(let stringValue):
-            DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(1)) { [weak self] in
-                self?.state.text = stringValue
-                self?.asyncExpectation?.fulfill()
-            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+
+            state.text = stringValue
+            asyncExpectation?.fulfill()
+        case .asyncDelayed(let stringValue, let delay):
+            try? await Task.sleep(nanoseconds: delay)
+
+            guard !Task.isCancelled else { return }
+
+            state.text = stringValue
+            asyncExpectation?.fulfill()
         }
     }
 }

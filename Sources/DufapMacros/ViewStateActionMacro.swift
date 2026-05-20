@@ -18,6 +18,7 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
 
 // MARK: - ViewStateActionMacro
 /**
@@ -68,6 +69,18 @@ public enum ViewStateActionMacro: ExtensionMacro, MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
 
+        guard isSupportedViewDeclaration(declaration) else {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@ViewWith` can only be applied to a struct. Use `@ViewWith(state: MyState.self, action: MyAction.self)` on a SwiftUI view.")
+            ))
+            return []
+        }
+
+        guard parseViewWithArguments(from: node, diagnoseIn: context) != nil else {
+            return []
+        }
+
         let syntax: DeclSyntax =
             """
             extension \(type.trimmed): ViewProtocol { }
@@ -84,4 +97,47 @@ public enum ViewStateActionMacro: ExtensionMacro, MemberMacro {
     ) throws -> [DeclSyntax] {
         return []
     }
+}
+
+private struct ViewWithMacroArguments {
+    let stateType: String
+    let actionType: String
+}
+
+private func isSupportedViewDeclaration(_ declaration: some DeclGroupSyntax) -> Bool {
+    declaration.is(StructDeclSyntax.self)
+}
+
+private func parseViewWithArguments(
+    from node: AttributeSyntax,
+    diagnoseIn context: any MacroExpansionContext
+) -> ViewWithMacroArguments? {
+    guard let arguments = node.arguments?.as(LabeledExprListSyntax.self) else {
+        context.diagnose(Diagnostic(
+            node: Syntax(node),
+            message: SimpleDiagnostic(message: "`@ViewWith` requires state and action types. Use `@ViewWith(state: MyState.self, action: MyAction.self)`.")
+        ))
+        return nil
+    }
+
+    guard let state = parseSelfArgument(arguments, label: "state"),
+          let action = parseSelfArgument(arguments, label: "action") else {
+        context.diagnose(Diagnostic(
+            node: Syntax(node),
+            message: SimpleDiagnostic(message: "`@ViewWith` arguments must use `.self`. Use `@ViewWith(state: MyState.self, action: MyAction.self)`.")
+        ))
+        return nil
+    }
+
+    return ViewWithMacroArguments(stateType: state, actionType: action)
+}
+
+private func parseSelfArgument(_ arguments: LabeledExprListSyntax, label: String) -> String? {
+    guard let argument = arguments.first(where: { $0.label?.text == label }),
+          let memberAccess = argument.expression.as(MemberAccessExprSyntax.self),
+          memberAccess.declName.baseName.text == "self" else {
+        return nil
+    }
+
+    return argument.expression.as(MemberAccessExprSyntax.self)?.base?.as(DeclReferenceExprSyntax.self)?.baseName.text
 }

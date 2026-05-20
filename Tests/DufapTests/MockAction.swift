@@ -21,13 +21,15 @@ import Dufap
 enum MockAction {
 
     case sync(Int)
+    case increment
     case async(String)
+    case asyncDelayed(String, UInt64)
 
     var triggerMode: TriggerMode {
         switch self {
-        case .sync:
+        case .sync, .increment:
             return .sync
-        case .async:
+        case .async, .asyncDelayed:
             return .async
         }
     }

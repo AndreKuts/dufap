@@ -21,6 +21,12 @@ import SwiftDiagnostics
 
 public struct PathMacro: ExtensionMacro {
 
+    private enum IdentityMode {
+        case `case`
+        case value
+        case invalid
+    }
+
     public static func expansion(
         of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
@@ -39,7 +45,48 @@ public struct PathMacro: ExtensionMacro {
 
         let modifiers = enumDecl.modifiers
         let accessModifier = modifiers.first(where: { ["public", "internal", "fileprivate", "private"].contains($0.name.text) })?.name.text
-        let access = accessModifier.map { "\($0) " } ?? ""
+        let access = accessModifier.map { $0 == "private" ? "fileprivate " : "\($0) " } ?? ""
+        let enumName = enumDecl.name.text
+
+        switch identityMode(from: node) {
+        case .case:
+            return [caseIdentityExtension(enumDecl: enumDecl, enumName: enumName, access: access)]
+        case .value:
+            return [valueIdentityExtension(enumName: enumName, access: access)]
+        case .invalid:
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@Pathable` supports `.case` and `.value` identity modes.")
+            ))
+            return []
+        }
+    }
+
+    private static func identityMode(from node: AttributeSyntax) -> IdentityMode {
+        guard let arguments = node.arguments?.as(LabeledExprListSyntax.self),
+              let firstArgument = arguments.first else {
+            return .case
+        }
+
+        guard let memberName = firstArgument.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text else {
+            return .invalid
+        }
+
+        switch memberName {
+        case "case":
+            return .case
+        case "value":
+            return .value
+        default:
+            return .invalid
+        }
+    }
+
+    private static func caseIdentityExtension(
+        enumDecl: EnumDeclSyntax,
+        enumName: String,
+        access: String
+    ) -> ExtensionDeclSyntax {
 
         let cases = enumDecl.memberBlock.members
             .compactMap { $0.decl.as(EnumCaseDeclSyntax.self)?.elements }
@@ -47,7 +94,6 @@ public struct PathMacro: ExtensionMacro {
             .enumerated().map { "case .\($1.name.text): return \($0)" }
             .joined(separator: "\n")
 
-        let enumName = enumDecl.name.text
         let extensionCode: DeclSyntax = """
             extension \(raw: enumName): Hashable, Equatable, Identifiable {
 
@@ -70,6 +116,22 @@ public struct PathMacro: ExtensionMacro {
             }
             """
 
-        return [extensionCode.cast(ExtensionDeclSyntax.self)]
+        return extensionCode.cast(ExtensionDeclSyntax.self)
+    }
+
+    private static func valueIdentityExtension(
+        enumName: String,
+        access: String
+    ) -> ExtensionDeclSyntax {
+
+        let extensionCode: DeclSyntax = """
+            extension \(raw: enumName): Hashable, Equatable, Identifiable {
+
+                \(raw: access)var id: Self { self }
+
+            }
+            """
+
+        return extensionCode.cast(ExtensionDeclSyntax.self)
     }
 }

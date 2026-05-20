@@ -17,6 +17,29 @@
 import Combine
 import Foundation
 
+/// A deterministic cancellation store for async tasks.
+public actor CancellationStore {
+
+    private var tasks: [String: Task<Void, Never>] = [:]
+
+    public init() {}
+
+    public func add(_ task: Task<Void, Never>, id: String) {
+        tasks[id]?.cancel()
+        tasks[id] = task
+    }
+
+    public func cancel(id: String) {
+        tasks[id]?.cancel()
+        tasks[id] = nil
+    }
+
+    public func cancelAll() {
+        tasks.values.forEach { $0.cancel() }
+        tasks.removeAll()
+    }
+}
+
 /// A thread-safe cancellation container that manages cancellable resources by ID.
 /// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom ``CancellableTask``, and others.
 open class CancellableBag {
@@ -40,6 +63,42 @@ open class CancellableBag {
             value = bag.removeValue(forKey: id)
         }
 
+        cancel(value)
+
+        return value
+    }
+
+    /// Cancels and removes all stored cancellable items.
+    public func cancelAll() {
+        var values: [Any] = []
+
+        queue.sync(flags: .barrier) {
+            values = Array(bag.values)
+            bag.removeAll()
+        }
+
+        values.forEach(cancel)
+    }
+
+    /**
+     Adds a cancellable item to the bag, replacing any existing item with the same ID.
+
+     - Parameters:
+        - id: Unique identifier for the cancellable item.
+        - any: The cancellable object to store.
+     */
+    public func add(id: AnyHashable, _ any: Any?) {
+        var previous: Any?
+
+        queue.sync(flags: .barrier) {
+            previous = bag.removeValue(forKey: id)
+            bag[id] = any
+        }
+
+        cancel(previous)
+    }
+
+    private func cancel(_ value: Any?) {
         switch value {
 
         case let cancellable as AnyCancellable:
@@ -54,31 +113,6 @@ open class CancellableBag {
         default:
             break
         }
-
-        return value
-    }
-
-    /// Cancels and removes all stored cancellable items.
-    public func cancelAll() {
-        var keys: [AnyHashable] = []
-        queue.sync {
-            keys = Array(bag.keys)
-        }
-        keys.forEach { cancel(id: $0) }
-    }
-
-    /**
-     Adds a cancellable item to the bag, replacing any existing item with the same ID.
-
-     - Parameters:
-        - id: Unique identifier for the cancellable item.
-        - any: The cancellable object to store.
-     */
-    public func add(id: AnyHashable, _ any: Any?) {
-        cancel(id: id)
-        queue.async(flags: .barrier) {
-            self.bag[id] = any
-        }
     }
 }
 
@@ -86,6 +120,7 @@ open class CancellableBag {
 public class CancellableTask {
 
     private var task: Task<Void, Never>?
+    private let lock = NSLock()
 
     /**
      Creates and starts a cancellable task.
@@ -105,8 +140,12 @@ public class CancellableTask {
 
     /// Cancels the task and removes the reference.
     public func cancel() {
+        lock.lock()
+        let task = task
+        self.task = nil
+        lock.unlock()
+
         task?.cancel()
-        task = nil
     }
 }
 
