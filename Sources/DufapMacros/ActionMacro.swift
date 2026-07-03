@@ -30,7 +30,15 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
         guard let enumDecl = declaration.as(EnumDeclSyntax.self) else {
             context.diagnose(Diagnostic(
                 node: Syntax(node),
-                message: SimpleDiagnostic(message: "`@ActionMacro` can only be applied to enums.")
+                message: SimpleDiagnostic(message: "`@Action` can only be applied to an enum. Use `@Action enum MyAction { ... }`.")
+            ))
+            return []
+        }
+
+        if node.arguments != nil {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@Action` does not take arguments. Use `@Action enum MyAction { ... }`.")
             ))
             return []
         }
@@ -94,7 +102,7 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
         else {
             context.diagnose(Diagnostic(
                 node: Syntax(node),
-                message: SimpleDiagnostic(message: "`triggerMode` must be a computed property with a switch on self")
+                message: SimpleDiagnostic(message: "`triggerMode` must be a computed property that switches on `self` and returns `.sync` or `.async`.")
             ))
             return []
         }
@@ -131,7 +139,7 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
                 else {
                     context.diagnose(Diagnostic(
                         node: Syntax(switchCase),
-                        message: SimpleDiagnostic(message: "Only `sync` and `async` trigger modes are supported")
+                        message: SimpleDiagnostic(message: "`triggerMode` only supports `.sync` and `.async`.")
                     ))
                     return []
                 }
@@ -151,7 +159,7 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
                 } else {
                     context.diagnose(Diagnostic(
                         node: Syntax(switchCase),
-                        message: SimpleDiagnostic(message: "Only `sync` and `async` trigger modes are supported")
+                        message: SimpleDiagnostic(message: "`triggerMode` only supports `.sync` and `.async`.")
                     ))
                     return []
                 }
@@ -178,6 +186,10 @@ public enum ActionMacro: MemberMacro, ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
+        guard declaration.is(EnumDeclSyntax.self), node.arguments == nil else {
+            return []
+        }
+
         let syntax: DeclSyntax = "extension \(type.trimmed): ActionProtocol { }"
         return [syntax.cast(ExtensionDeclSyntax.self)]
     }

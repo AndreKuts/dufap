@@ -18,6 +18,7 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
 
 // MARK: - ViewModelMacro
 /**
@@ -51,6 +52,10 @@ import SwiftSyntaxMacros
  */
 public enum ViewModelMacro { }
 
+private struct ViewModelMacroArguments {
+    let actionType: String
+}
+
 extension ViewModelMacro: ExtensionMacro {
 
     public static func expansion(
@@ -60,6 +65,11 @@ extension ViewModelMacro: ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
+
+        guard isSupportedViewModelDeclaration(declaration),
+              parseArguments(from: node, diagnoseIn: nil) != nil else {
+            return []
+        }
 
         let viewModel: DeclSyntax = "extension \(type.trimmed): ViewModelProtocol { }"
 
@@ -77,12 +87,28 @@ extension ViewModelMacro: MemberMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
 
-        let args = declaration.attributes.compactMap { $0.as(AttributeSyntax.self) }.first?.arguments
-        let actionType = args?.as(LabeledExprListSyntax.self)?.first?.expression.as(MemberAccessExprSyntax.self)?.base?.as(DeclReferenceExprSyntax.self)?.baseName.text ?? ""
+        guard isSupportedViewModelDeclaration(declaration) else {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@ViewModel` can only be applied to a class — ViewModels conform to `ObservableObject`, which is class-only.")
+            ))
+            return []
+        }
+
+        if !hasMainActorAttribute(declaration) {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@ViewModel` requires the type to be `@MainActor`. Add `@MainActor` above `@ViewModel` — a ViewModel is a main-actor-isolated UI object.")
+            ))
+        }
+
+        guard let arguments = parseArguments(from: node, diagnoseIn: context) else {
+            return []
+        }
 
         return [
             """
-            typealias A = \(raw: actionType)
+            typealias A = \(raw: arguments.actionType)
 
             var bag: CancellableBag = CancellableBag()
 
@@ -92,6 +118,45 @@ extension ViewModelMacro: MemberMacro {
     }
 }
 
+private func isSupportedViewModelDeclaration(_ declaration: some DeclGroupSyntax) -> Bool {
+    declaration.is(ClassDeclSyntax.self)
+}
+
+private func hasMainActorAttribute(_ declaration: some DeclGroupSyntax) -> Bool {
+    declaration.attributes.contains { element in
+        element.as(AttributeSyntax.self)?
+            .attributeName.as(IdentifierTypeSyntax.self)?
+            .name.text == "MainActor"
+    }
+}
+
+private func parseArguments(
+    from node: AttributeSyntax,
+    diagnoseIn context: (any MacroExpansionContext)?
+) -> ViewModelMacroArguments? {
+    guard let arguments = node.arguments?.as(LabeledExprListSyntax.self),
+          let argument = arguments.first,
+          argument.label?.text == "action" else {
+        context?.diagnose(Diagnostic(
+            node: Syntax(node),
+            message: SimpleDiagnostic(message: "`@ViewModel` requires an action type. Use `@ViewModel(action: MyAction.self)`.")
+        ))
+        return nil
+    }
+
+    guard let memberAccess = argument.expression.as(MemberAccessExprSyntax.self),
+          memberAccess.declName.baseName.text == "self",
+          let actionType = memberAccess.base?.as(DeclReferenceExprSyntax.self)?.baseName.text else {
+        context?.diagnose(Diagnostic(
+            node: Syntax(argument),
+            message: SimpleDiagnostic(message: "`@ViewModel` action argument must use `.self`. Use `@ViewModel(action: MyAction.self)`.")
+        ))
+        return nil
+    }
+
+    return ViewModelMacroArguments(actionType: actionType)
+}
+
 extension ViewModelMacro: MemberAttributeMacro {
     public static func expansion(
         of node: AttributeSyntax,
@@ -99,6 +164,10 @@ extension ViewModelMacro: MemberAttributeMacro {
         providingAttributesFor member: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [AttributeSyntax] {
+        guard isSupportedViewModelDeclaration(declaration),
+              parseArguments(from: node, diagnoseIn: nil) != nil else {
+            return []
+        }
 
         let memberId = member
             .as(VariableDeclSyntax.self)?

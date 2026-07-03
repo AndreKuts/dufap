@@ -110,15 +110,18 @@ public macro Action() = #externalMacro(module: "DufapMacros", type: "ActionMacro
 
 
 /**
- `@Pathable` enhances an enum (typically representing a navigation path) with identity and hashing capabilities.
+ `@Pathable` enhances an enum, typically representing a navigation path, with identity and hashing capabilities.
 
- This macro:
- - Conforms the enum to `Hashable`, `Equatable`, and `Identifiable`
- - Injects an `index` property to reflect the enum case order
- - Provides an `id` property based on the index
- - Implements `hash(into:)` and `==` using the index
+ This macro supports two identity modes:
+ - `.case` (default): equality, hashing, and `id` use the enum case index. Associated values are ignored, so payloads do not need to be `Hashable`.
+ - `.value`: Swift synthesizes full-value `Hashable` and `Equatable` conformance, and `id` is `self`. Associated values must be `Hashable`.
 
  It's particularly useful when enums are used in SwiftUI navigation stacks or `ForEach` constructs.
 */
 @attached(extension, conformances: Hashable, Equatable, Identifiable, names: named(index), named(id), named(hash(into:)), named(==))
-public macro Pathable() = #externalMacro(module: "DufapMacros", type: "PathMacro")
+public macro Pathable(_ identity: PathableIdentity = .case) = #externalMacro(module: "DufapMacros", type: "PathMacro")
+
+public enum PathableIdentity {
+    case `case`
+    case value
+}

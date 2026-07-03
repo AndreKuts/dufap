@@ -28,7 +28,8 @@ import Combine
  - Inherits:
     - `ObservableObject`: Enables automatic UI updates when the state changes.
  */
-public protocol ViewModelProtocol: ObservableObject where ObjectWillChangePublisher.Output == Void {
+@MainActor
+public protocol ViewModelProtocol: ObservableObject, Sendable where ObjectWillChangePublisher.Output == Void {
 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
     associatedtype A: ActionProtocol
@@ -56,6 +57,7 @@ public protocol ViewModelProtocol: ObservableObject where ObjectWillChangePublis
      */
     func trigger(action: A.SA)
 
+    @MainActor
     func triggerAsync(action: A.AA) async
 
 }
@@ -85,6 +87,7 @@ public extension ViewModelProtocol where A.AA == Never {
 
     // The function `triggerAsync` takes a Never action but doesn't actually do anything.
     // It's used for situations where no asynchronous action is expected, providing an empty async trigger.
+    @MainActor
     func triggerAsync(action: Never) async { }
 }
 

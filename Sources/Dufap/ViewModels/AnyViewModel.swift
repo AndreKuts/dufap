@@ -34,32 +34,32 @@ import SwiftUI
  - Trigger forwarding for both sync and async actions.
  */
 @dynamicMemberLookup
+@MainActor
 public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
-    private let wrappedTrigger: (A.SA) -> Void
-    private let wrappedTriggerAsync: (A.AA) async -> Void
-    private var bag: CancellableBag
+    private let stateProvider: @MainActor @Sendable () -> S
+    private let wrappedTrigger: @MainActor @Sendable (A.SA) -> Void
+    private let wrappedTriggerAsync: @MainActor @Sendable (A.AA) async -> Void
+    private let bag: CancellableBag
+    private var runningAsyncActions: [String: (token: UUID, action: A)] = [:]
 
-    /// A publisher that notifies SwiftUI views when changes occur.
-    @Published public private(set) var state: S
+    /// The current state, read straight from the wrapped ViewModel — no copy.
+    public var state: S { stateProvider() }
 
     /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
     ///
     /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
-        self.state = viewModel.state
+        self.stateProvider = { viewModel.state }
         self.wrappedTrigger = viewModel.trigger
         self.wrappedTriggerAsync = viewModel.triggerAsync
         self.bag = viewModel.bag
 
-        viewModel
-            .statePublisher
-            .dropFirst()
-            .removeDuplicates()
-            .sincOnMain { [weak self] newState in
-                self?.state = newState
-            }
-            .store(in: bag, as: "update_state")
+        // `state` is computed from the wrapped ViewModel, so there's nothing to
+        // copy or keep in sync — just forward its change notifications.
+        viewModel.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: bag, as: "forward_will_change")
     }
 
     deinit {
@@ -74,33 +74,115 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
      Depending on the result, it invokes the appropriate trigger method and notifies the registry after completion.
 
      - Parameters:
-        - action: The action to trigger.
+     - action: The action to trigger.
 
      - Note:
-        - This method supports dependency injection of `pluginRegistry` to improve testability and avoid repeated access to the shared singleton.
-        - If the action cannot be resolved to a known sync or async type, an assertion failure is raised.
+     - If the action cannot be resolved to a known sync or async type, an assertion failure is raised.
      */
     public func trigger(action: A) {
 
-        let plugins = ActionPluginRegistry.all()
-        plugins.forEach { $0.willTrigger(action: action) }
+        let plugins = ActionPluginRegistry.allIfNotEmpty()
+        sendLifecycle(.willTrigger, action: action, to: plugins)
 
         if let syncAction = A.SA(from: action) {
-            wrappedTrigger(syncAction)
-            plugins.forEach { $0.didTrigger(action: action) }
+            triggerSyncAction(syncAction, originalAction: action, plugins: plugins)
+        } else if let asyncAction = A.AA(from: action) {
+            triggerAsyncAction(asyncAction, originalAction: action, plugins: plugins)
+        } else {
+            handleUnhandledAction(action, plugins: plugins)
         }
+    }
 
-        else if let asyncAction = A.AA(from: action) {
-            Task {
-                await wrappedTriggerAsync(asyncAction)
-                plugins.forEach { $0.didTrigger(action: action) }
+    private func triggerSyncAction(
+        _ syncAction: A.SA,
+        originalAction action: A,
+        plugins: [ActionPlugin]?
+    ) {
+        wrappedTrigger(syncAction)
+        sendLifecycle(.didTrigger, action: action, to: plugins)
+    }
+
+    private func triggerAsyncAction(
+        _ asyncAction: A.AA,
+        originalAction action: A,
+        plugins: [ActionPlugin]?
+    ) {
+        let token = UUID()
+        let cancelID = action.cancelID
+
+        sendCancellationForReplacedAction(
+            action,
+            token: token,
+            cancelID: cancelID,
+            plugins: plugins
+        )
+
+        Task {
+            await wrappedTriggerAsync(asyncAction)
+
+            guard removeRunningAction(cancelID: cancelID, token: token) else {
+                return
             }
-            .store(in: bag, as: action.cancelID)
-        }
 
-        else {
-            assertionFailure("Unhandled action type: \(action)")
+            if Task.isCancelled {
+                sendLifecycle(.didCancel, action: action, to: plugins)
+            } else {
+                sendLifecycle(.didTrigger, action: action, to: plugins)
+            }
         }
+        .store(in: bag, as: cancelID)
+    }
+
+    private func sendCancellationForReplacedAction(
+        _ action: A,
+        token: UUID,
+        cancelID: String,
+        plugins: [ActionPlugin]?
+    ) {
+        let previousAction = replaceRunningAction(action, token: token, cancelID: cancelID)
+        let didCancelStoredTask = bag.cancel(id: cancelID) != nil
+
+        if let cancelledAction = previousAction ?? (didCancelStoredTask ? action : nil) {
+            sendLifecycle(.didCancel, action: cancelledAction, to: plugins)
+        }
+    }
+
+    private func handleUnhandledAction(_ action: A, plugins: [ActionPlugin]?) {
+        sendLifecycle(
+            .didFail,
+            action: action,
+            to: plugins,
+            errorDescription: "Unhandled action type"
+        )
+        assertionFailure("Unhandled action type: \(action)")
+    }
+
+    func replaceRunningAction(_ action: A, token: UUID, cancelID: String) -> A? {
+        let previousAction = runningAsyncActions[cancelID]?.action
+        runningAsyncActions[cancelID] = (token, action)
+        return previousAction
+    }
+
+    func removeRunningAction(cancelID: String, token: UUID) -> Bool {
+        guard runningAsyncActions[cancelID]?.token == token else { return false }
+        runningAsyncActions[cancelID] = nil
+        return true
+    }
+
+    private func sendLifecycle(
+        _ phase: ActionLifecyclePhase,
+        action: A,
+        to plugins: [ActionPlugin]?,
+        errorDescription: String? = nil
+    ) {
+        ActionPluginRegistry.send(
+            ActionLifecycleEvent(
+                phase: phase,
+                action: action,
+                errorDescription: errorDescription
+            ),
+            to: plugins
+        )
     }
 
     /**
@@ -141,10 +223,10 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
      when the UI sets the same value multiple times (common in `TextField`/`SecureField`).
 
      - Parameters:
-        - keyPath: A writable key path to a value within the state.
-        - onChange: A closure that produces an action to trigger when the value changes.
+     - keyPath: A writable key path to a value within the state.
+     - onChange: A closure that produces an action to trigger when the value changes.
      - Returns: A SwiftUI `Binding` that reads from state and triggers actions
-                on user updates, while avoiding duplicate actions for unchanged values.
+     on user updates, while avoiding duplicate actions for unchanged values.
      */
     public func binding<Value: Equatable>(
         _ keyPath: WritableKeyPath<S, Value>,
@@ -163,25 +245,6 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 }
 
 
-extension AnyViewModel: Identifiable where S: Identifiable {
-
-    /// The unique identifier for the ViewModel, derived from the state's identifier.
+extension AnyViewModel: @MainActor Identifiable where S: Identifiable {
     public var id: S.ID { state.id }
-}
-
-
-extension Publisher where Failure == Never {
-
-    /// Send an action to the main thread if necessary.
-    func sincOnMain(reciveValue: @escaping (Output) -> Void) -> AnyCancellable {
-        sink { value in
-            if Thread.isMainThread {
-                reciveValue(value)
-            } else {
-                DispatchQueue.main.async {
-                    reciveValue(value)
-                }
-            }
-        }
-    }
 }
