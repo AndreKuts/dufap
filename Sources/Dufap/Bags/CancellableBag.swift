@@ -40,12 +40,20 @@ public actor CancellationStore {
     }
 }
 
-/// A thread-safe cancellation container that manages cancellable resources by ID.
-/// Supports cancellation of `AnyCancellable`, `NSKeyValueObservation`, custom ``CancellableTask``, and others.
-open class CancellableBag {
+/// A resource that can be torn down and stored in a ``CancellableBag``.
+/// Conforming types (`AnyCancellable`, `NSKeyValueObservation`, ``CancellableTask``,
+/// notification tokens) replace the old `Any` + type-switch storage with a
+/// compiler-checked contract.
+public protocol DufapCancellable {
+    func dufapCancel()
+}
 
-    private var bag: [AnyHashable: Any] = [:]
-    private let queue = DispatchQueue(label: "com.dufap.cancellable_bag.queue", attributes: .concurrent)
+/// A thread-safe cancellation container that stores ``DufapCancellable`` resources by ID.
+/// `@unchecked Sendable`: all storage access is serialized by the internal serial queue.
+open class CancellableBag: @unchecked Sendable {
+
+    private var bag: [AnyHashable: any DufapCancellable] = [:]
+    private let queue = DispatchQueue(label: "com.dufap.cancellable_bag.queue")
 
     public init() {}
 
@@ -56,71 +64,46 @@ open class CancellableBag {
      - Returns: The removed item, or `nil` if not found.
      */
     @discardableResult
-    public func cancel(id: AnyHashable) -> Any? {
-        var value: Any?
-
-        queue.sync(flags: .barrier) {
-            value = bag.removeValue(forKey: id)
-        }
-
-        cancel(value)
-
+    public func cancel(id: AnyHashable) -> (any DufapCancellable)? {
+        let value = queue.sync { bag.removeValue(forKey: id) }
+        value?.dufapCancel()
         return value
     }
 
     /// Cancels and removes all stored cancellable items.
     public func cancelAll() {
-        var values: [Any] = []
-
-        queue.sync(flags: .barrier) {
-            values = Array(bag.values)
+        let values = queue.sync { () -> [any DufapCancellable] in
+            let all = Array(bag.values)
             bag.removeAll()
+            return all
         }
-
-        values.forEach(cancel)
+        values.forEach { $0.dufapCancel() }
     }
 
     /**
-     Adds a cancellable item to the bag, replacing any existing item with the same ID.
+     Adds a cancellable item to the bag, replacing (and cancelling) any existing item with the same ID.
 
      - Parameters:
         - id: Unique identifier for the cancellable item.
-        - any: The cancellable object to store.
+        - item: The cancellable to store, or `nil` to just remove the existing one.
      */
-    public func add(id: AnyHashable, _ any: Any?) {
-        var previous: Any?
-
-        queue.sync(flags: .barrier) {
-            previous = bag.removeValue(forKey: id)
-            bag[id] = any
+    public func add(id: AnyHashable, _ item: (any DufapCancellable)?) {
+        let previous = queue.sync { () -> (any DufapCancellable)? in
+            let prev = bag.removeValue(forKey: id)
+            bag[id] = item
+            return prev
         }
-
-        cancel(previous)
-    }
-
-    private func cancel(_ value: Any?) {
-        switch value {
-
-        case let cancellable as AnyCancellable:
-            cancellable.cancel()
-
-        case let observer as NSKeyValueObservation:
-            observer.invalidate()
-
-        case let task as CancellableTask:
-            task.cancel()
-
-        default:
-            break
-        }
+        previous?.dufapCancel()
     }
 }
 
 /// A wrapper around `Task` to allow manual cancellation and storage in a ``CancellableBag``.
-public class CancellableTask {
+public final class CancellableTask: DufapCancellable {
 
     private var task: Task<Void, Never>?
     private let lock = NSLock()
+
+    public func dufapCancel() { cancel() }
 
     /**
      Creates and starts a cancellable task.
@@ -149,6 +132,22 @@ public class CancellableTask {
     }
 }
 
+
+extension AnyCancellable: DufapCancellable {
+    public func dufapCancel() { cancel() }
+}
+
+extension NSKeyValueObservation: DufapCancellable {
+    public func dufapCancel() { invalidate() }
+}
+
+/// Wraps a NotificationCenter observer token so it is removed on cancel. The old
+/// `Any`-based bag silently dropped these (its type-switch had no case for them);
+/// this now actually tears the observer down.
+private struct NotificationObserverCancellable: DufapCancellable {
+    let observer: any NSObjectProtocol
+    func dufapCancel() { NotificationCenter.default.removeObserver(observer) }
+}
 
 public extension Task where Success == Void, Failure == Never {
 
@@ -181,6 +180,6 @@ public extension NSObjectProtocol {
 
     /// Stores an `NSObjectProtocol` (typically a Notification observer) in the ``CancellableBag`` using the given identifier.
     func store(in bag: CancellableBag, as id: AnyHashable) {
-        bag.add(id: id, self)
+        bag.add(id: id, NotificationObserverCancellable(observer: self))
     }
 }

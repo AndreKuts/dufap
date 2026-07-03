@@ -18,6 +18,7 @@ import Foundation
 import XCTest
 import Dufap
 
+@MainActor
 @ViewModel(action: MockAction.self)
 class MockViewModel {
 

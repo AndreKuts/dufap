@@ -16,6 +16,7 @@
 
 import Foundation
 
+@MainActor
 public final class ViewModelTester<V: ViewModelProtocol> {
 
     public let viewModel: V
@@ -28,9 +29,7 @@ public final class ViewModelTester<V: ViewModelProtocol> {
 
     @discardableResult
     public func send(_ action: V.A) async -> V.S {
-        await MainActor.run {
-            erasedViewModel.trigger(action: action)
-        }
+        erasedViewModel.trigger(action: action)
         await Task.yield()
         return erasedViewModel.state
     }

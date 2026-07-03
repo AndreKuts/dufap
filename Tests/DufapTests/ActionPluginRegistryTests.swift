@@ -17,6 +17,7 @@
 import XCTest
 import Dufap
 
+@MainActor
 final class ActionPluginRegistryTests: XCTestCase {
 
     override func setUp() {

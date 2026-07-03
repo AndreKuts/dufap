@@ -90,9 +90,16 @@ extension ViewModelMacro: MemberMacro {
         guard isSupportedViewModelDeclaration(declaration) else {
             context.diagnose(Diagnostic(
                 node: Syntax(node),
-                message: SimpleDiagnostic(message: "`@ViewModel` can only be applied to a class or struct. Use `@ViewModel(action: MyAction.self)` on a ViewModel type.")
+                message: SimpleDiagnostic(message: "`@ViewModel` can only be applied to a class — ViewModels conform to `ObservableObject`, which is class-only.")
             ))
             return []
+        }
+
+        if !hasMainActorAttribute(declaration) {
+            context.diagnose(Diagnostic(
+                node: Syntax(node),
+                message: SimpleDiagnostic(message: "`@ViewModel` requires the type to be `@MainActor`. Add `@MainActor` above `@ViewModel` — a ViewModel is a main-actor-isolated UI object.")
+            ))
         }
 
         guard let arguments = parseArguments(from: node, diagnoseIn: context) else {
@@ -112,7 +119,15 @@ extension ViewModelMacro: MemberMacro {
 }
 
 private func isSupportedViewModelDeclaration(_ declaration: some DeclGroupSyntax) -> Bool {
-    declaration.is(ClassDeclSyntax.self) || declaration.is(StructDeclSyntax.self)
+    declaration.is(ClassDeclSyntax.self)
+}
+
+private func hasMainActorAttribute(_ declaration: some DeclGroupSyntax) -> Bool {
+    declaration.attributes.contains { element in
+        element.as(AttributeSyntax.self)?
+            .attributeName.as(IdentifierTypeSyntax.self)?
+            .name.text == "MainActor"
+    }
 }
 
 private func parseArguments(

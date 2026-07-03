@@ -80,6 +80,7 @@ class MacrosTest: XCTestCase {
     private let myState: String = "struct MyState: StateProtocol { }"
 
     private let myViewModel: String = """
+    @MainActor
     @ViewModel(action: MyAction.self)
     class MyViewModel {
 
@@ -96,6 +97,7 @@ class MacrosTest: XCTestCase {
     """
 
     private let myViewModelExpansion: String = """
+    @MainActor
     class MyViewModel {
         @Published
 
@@ -122,6 +124,7 @@ class MacrosTest: XCTestCase {
 
     private let attributedViewModel: String = """
     @available(iOS 15, *)
+    @MainActor
     @ViewModel(action: MyAction.self)
     class AttributedViewModel {
 
@@ -139,6 +142,7 @@ class MacrosTest: XCTestCase {
 
     private let attributedViewModelExpansion: String = """
     @available(iOS 15, *)
+    @MainActor
     class AttributedViewModel {
         @Published
 
@@ -256,6 +260,7 @@ class MacrosTest: XCTestCase {
 
     private let invalidViewModelMissingAction: String =
     """
+    @MainActor
     @ViewModel
     final class InvalidViewModel {
         var state: MyState
@@ -264,6 +269,7 @@ class MacrosTest: XCTestCase {
 
     private let invalidViewModelMissingActionExpansion: String =
     """
+    @MainActor
     final class InvalidViewModel {
         var state: MyState
     }
@@ -271,6 +277,7 @@ class MacrosTest: XCTestCase {
 
     private let invalidViewModelActionWithoutSelf: String =
     """
+    @MainActor
     @ViewModel(action: MyAction)
     final class InvalidViewModel {
         var state: MyState
@@ -279,6 +286,7 @@ class MacrosTest: XCTestCase {
 
     private let invalidViewModelActionWithoutSelfExpansion: String =
     """
+    @MainActor
     final class InvalidViewModel {
         var state: MyState
     }
@@ -443,7 +451,7 @@ class MacrosTest: XCTestCase {
             diagnostics: [
                 DiagnosticSpec(
                     message: "`@ViewModel` requires an action type. Use `@ViewModel(action: MyAction.self)`.",
-                    line: 1,
+                    line: 2,
                     column: 1
                 )
             ],
@@ -458,7 +466,7 @@ class MacrosTest: XCTestCase {
             diagnostics: [
                 DiagnosticSpec(
                     message: "`@ViewModel` action argument must use `.self`. Use `@ViewModel(action: MyAction.self)`.",
-                    line: 1,
+                    line: 2,
                     column: 12
                 )
             ],

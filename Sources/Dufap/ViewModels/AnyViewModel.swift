@@ -34,34 +34,32 @@ import SwiftUI
  - Trigger forwarding for both sync and async actions.
  */
 @dynamicMemberLookup
+@MainActor
 public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject {
 
-    private let wrappedTrigger: (A.SA) -> Void
-    private let wrappedTriggerAsync: @MainActor (A.AA) async -> Void
+    private let stateProvider: @MainActor @Sendable () -> S
+    private let wrappedTrigger: @MainActor @Sendable (A.SA) -> Void
+    private let wrappedTriggerAsync: @MainActor @Sendable (A.AA) async -> Void
     private let bag: CancellableBag
-    private let lifecycleQueue = DispatchQueue(label: "com.dufap.any_view_model.lifecycle")
     private var runningAsyncActions: [String: (token: UUID, action: A)] = [:]
 
-    /// A publisher that notifies SwiftUI views when changes occur.
-    @Published public private(set) var state: S
+    /// The current state, read straight from the wrapped ViewModel — no copy.
+    public var state: S { stateProvider() }
 
     /// Initializes the type-erased view model by wrapping a concrete ``ViewModelProtocol`` instance.
     ///
     /// - Parameter viewModel: The concrete view model to wrap. Must match the expected `S` and `A` types.
     public init<V: ViewModelProtocol>(_ viewModel: V) where V.S == S, V.A == A {
-        self.state = viewModel.state
+        self.stateProvider = { viewModel.state }
         self.wrappedTrigger = viewModel.trigger
         self.wrappedTriggerAsync = viewModel.triggerAsync
         self.bag = viewModel.bag
 
-        viewModel
-            .statePublisher
-            .dropFirst()
-            .removeDuplicates()
-            .sink { [weak self] newState in
-                self?.publishStateOnMain(newState)
-            }
-            .store(in: bag, as: "update_state")
+        // `state` is computed from the wrapped ViewModel, so there's nothing to
+        // copy or keep in sync — just forward its change notifications.
+        viewModel.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: bag, as: "forward_will_change")
     }
 
     deinit {
@@ -100,15 +98,8 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
         originalAction action: A,
         plugins: [ActionPlugin]?
     ) {
-        if Thread.isMainThread {
-            wrappedTrigger(syncAction)
-            sendLifecycle(.didTrigger, action: action, to: plugins)
-        } else {
-            DispatchQueue.main.async {
-                self.wrappedTrigger(syncAction)
-                self.sendLifecycle(.didTrigger, action: action, to: plugins)
-            }
-        }
+        wrappedTrigger(syncAction)
+        sendLifecycle(.didTrigger, action: action, to: plugins)
     }
 
     private func triggerAsyncAction(
@@ -126,10 +117,12 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
             plugins: plugins
         )
 
-        Task { @MainActor in
+        Task {
             await wrappedTriggerAsync(asyncAction)
 
-            guard removeRunningAction(cancelID: cancelID, token: token) else { return }
+            guard removeRunningAction(cancelID: cancelID, token: token) else {
+                return
+            }
 
             if Task.isCancelled {
                 sendLifecycle(.didCancel, action: action, to: plugins)
@@ -164,38 +157,16 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
         assertionFailure("Unhandled action type: \(action)")
     }
 
-    private func replaceRunningAction(_ action: A, token: UUID, cancelID: String) -> A? {
-        var previousAction: A?
-
-        lifecycleQueue.sync {
-            previousAction = runningAsyncActions[cancelID]?.action
-            runningAsyncActions[cancelID] = (token, action)
-        }
-
+    func replaceRunningAction(_ action: A, token: UUID, cancelID: String) -> A? {
+        let previousAction = runningAsyncActions[cancelID]?.action
+        runningAsyncActions[cancelID] = (token, action)
         return previousAction
     }
 
-    private func removeRunningAction(cancelID: String, token: UUID) -> Bool {
-        var didRemove = false
-
-        lifecycleQueue.sync {
-            guard runningAsyncActions[cancelID]?.token == token else { return }
-
-            runningAsyncActions[cancelID] = nil
-            didRemove = true
-        }
-
-        return didRemove
-    }
-
-    private func publishStateOnMain(_ newState: S) {
-        if Thread.isMainThread {
-            state = newState
-        } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.state = newState
-            }
-        }
+    func removeRunningAction(cancelID: String, token: UUID) -> Bool {
+        guard runningAsyncActions[cancelID]?.token == token else { return false }
+        runningAsyncActions[cancelID] = nil
+        return true
     }
 
     private func sendLifecycle(
@@ -274,8 +245,6 @@ public class AnyViewModel<S: StateProtocol, A: ActionProtocol>: ObservableObject
 }
 
 
-extension AnyViewModel: Identifiable where S: Identifiable {
-
-    /// The unique identifier for the ViewModel, derived from the state's identifier.
+extension AnyViewModel: @MainActor Identifiable where S: Identifiable {
     public var id: S.ID { state.id }
 }

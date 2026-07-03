@@ -18,6 +18,7 @@ import XCTest
 import Combine
 import Dufap
 
+@MainActor
 class AnyViewModelTests: XCTestCase {
 
     let state = MockState(value: 10, text: "Ten")
@@ -58,123 +59,30 @@ class AnyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.value, 1)
     }
 
-    func test_SyncActionFromBackgroundIsScheduledOnMainThread() {
+    // The former "…FromBackground…" tests exercised runtime cross-thread dispatch
+    // safety. Under @MainActor isolation that safety is a compile-time guarantee —
+    // `trigger` / `state` are main-actor-isolated, so calling them off the main
+    // actor is a compiler error (Swift 6). They are replaced by these
+    // direct-contract tests.
 
-        let exp = self.expectation(description: "Background Sync Action triggered")
-        let vm = MockViewModel(state: state, syncExpect: exp)
-        let viewModel = AnyViewModel(vm)
-
-        DispatchQueue.global().async {
-            viewModel.trigger(action: .sync(42))
-        }
-
-        waitForExpectations(timeout: 2)
-
-        XCTAssertTrue(vm.lastSyncMutationWasMainThread)
-        XCTAssertEqual(viewModel.value, 42)
-    }
-
-    func test_StatePublisherFromBackgroundPublishesAnyViewModelStateOnMainThread() {
-
-        let exp = self.expectation(description: "AnyViewModel publishes synchronized state on main")
+    func test_syncAction_mutatesStateSynchronouslyOnMain() {
         let vm = MockViewModel(state: state)
         let viewModel = AnyViewModel(vm)
-        let lock = NSLock()
-        var didPublishOnMainThread = false
-        var cancellable: AnyCancellable?
 
-        cancellable = viewModel.objectWillChange.sink {
-            lock.lock()
-            didPublishOnMainThread = Thread.isMainThread
-            lock.unlock()
+        viewModel.trigger(action: .sync(42))
 
-            exp.fulfill()
-        }
-
-        DispatchQueue.global().async {
-            vm.state.value = 77
-        }
-
-        waitForExpectations(timeout: 2)
-
-        lock.lock()
-        let publishWasMainThread = didPublishOnMainThread
-        lock.unlock()
-
-        XCTAssertTrue(publishWasMainThread)
-        XCTAssertEqual(viewModel.value, 77)
-        _ = cancellable
-    }
-
-    func test_SyncActionFromBackgroundDoesNotMutateInline() {
-
-        let exp = self.expectation(description: "Background Sync Action triggered")
-        let vm = MockViewModel(state: state, syncExpect: exp)
-        let viewModel = AnyViewModel(vm)
-        let triggerReturned = DispatchSemaphore(value: 0)
-        let lock = NSLock()
-        var valueImmediatelyAfterTrigger: Int?
-
-        DispatchQueue.global().async {
-            viewModel.trigger(action: .sync(99))
-
-            lock.lock()
-            valueImmediatelyAfterTrigger = viewModel.value
-            lock.unlock()
-
-            triggerReturned.signal()
-        }
-
-        XCTAssertEqual(triggerReturned.wait(timeout: .now() + 2), .success)
-
-        lock.lock()
-        let observedValue = valueImmediatelyAfterTrigger
-        lock.unlock()
-
-        XCTAssertEqual(observedValue, 10)
-
-        waitForExpectations(timeout: 2)
-
-        XCTAssertEqual(viewModel.value, 99)
-    }
-
-    func test_ManyBackgroundSyncActionsAreSerializedOnMainThread() {
-
-        let actionCount = 200
-        let exp = self.expectation(description: "All background sync actions triggered")
-        exp.expectedFulfillmentCount = actionCount
-
-        let vm = MockViewModel(state: state, syncExpect: exp)
-        let viewModel = AnyViewModel(vm)
-        let queue = DispatchQueue(label: "dufap.sync.stress", attributes: .concurrent)
-
-        for _ in 0..<actionCount {
-            queue.async {
-                viewModel.trigger(action: .increment)
-            }
-        }
-
-        waitForExpectations(timeout: 5)
-
+        // No async hop under @MainActor — the mutation is visible immediately.
+        XCTAssertEqual(viewModel.value, 42)
         XCTAssertTrue(vm.lastSyncMutationWasMainThread)
-        XCTAssertEqual(vm.syncMutationCount, actionCount)
-        XCTAssertEqual(viewModel.value, state.value + actionCount)
     }
 
-    func test_AsyncActionCanBeTriggeredFromBackground() {
-
-        let exp = self.expectation(description: "Background Async Action triggered")
-        let vm = MockViewModel(state: state, asyncExpect: exp)
+    func test_wrappedStateChange_syncsToErasedViewModel() {
+        let vm = MockViewModel(state: state)
         let viewModel = AnyViewModel(vm)
-        let newValue = "Background Async Value"
 
-        DispatchQueue.global().async {
-            viewModel.trigger(action: .async(newValue))
-        }
+        vm.state.value = 77
 
-        waitForExpectations(timeout: 2)
-
-        XCTAssertEqual(viewModel.text, newValue)
+        XCTAssertEqual(viewModel.value, 77)
     }
 
     func test_AsyncActionWithSameCancelIDCancelsPreviousTask() {

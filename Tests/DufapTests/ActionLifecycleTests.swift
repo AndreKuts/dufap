@@ -17,6 +17,7 @@
 import XCTest
 import Dufap
 
+@MainActor
 final class ActionLifecycleTests: XCTestCase {
 
     override func setUp() {

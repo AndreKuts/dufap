@@ -68,7 +68,9 @@ public extension ActionPlugin {
 /// A thread-safe global registry for managing `ActionPlugin` instances.
 public enum ActionPluginRegistry {
 
-    private static var plugins = [ActionPlugin]()
+    // Synchronized manually by `queue` (concurrent reads, barrier writes), so the
+    // compiler's global-mutable-state check is opted out of explicitly.
+    nonisolated(unsafe) private static var plugins = [ActionPlugin]()
     private static let queue = DispatchQueue(label: "ActionPluginRegistry.queue", attributes: .concurrent)
 
     /// Registers a plugin in a thread-safe way.

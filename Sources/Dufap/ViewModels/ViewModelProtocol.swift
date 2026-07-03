@@ -28,7 +28,8 @@ import Combine
  - Inherits:
     - `ObservableObject`: Enables automatic UI updates when the state changes.
  */
-public protocol ViewModelProtocol: ObservableObject where ObjectWillChangePublisher.Output == Void {
+@MainActor
+public protocol ViewModelProtocol: ObservableObject, Sendable where ObjectWillChangePublisher.Output == Void {
 
     /// The type of actions that the ViewModel can handle, conforming to `ActionProtocol`.
     associatedtype A: ActionProtocol
